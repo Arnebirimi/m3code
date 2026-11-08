@@ -29,6 +29,7 @@ import {
   layerSettingsWatcher,
   providerHostLayer,
   seedDevReplayInstance,
+  seedLocalAgentInstances,
 } from "./ProviderInstanceRegistryHydration.ts";
 import * as ProviderHostLive from "./ProviderHostLive.ts";
 import { ProviderInstanceRegistryMutator } from "./ProviderInstanceRegistryMutator.ts";
@@ -131,6 +132,41 @@ describe("deriveProviderInstanceConfigMap", () => {
     });
     expect(derive({})).toEqual({ driver: pi, inferenceServerId: rtx });
   });
+});
+
+describe("seedLocalAgentInstances", () => {
+  effectIt.effect("switches on found local agents and leaves configured ones alone", () =>
+    Effect.gen(function* () {
+      const driver = (name: string) => ProviderDriverKind.make(name);
+      yield* seedLocalAgentInstances([
+        { driver: driver("pi"), found: Effect.succeed(true) },
+        { driver: driver("opencode"), found: Effect.succeed(false) },
+        { driver: driver("noname"), found: Effect.succeed(true) },
+      ]);
+      const settings = yield* ServerSettingsService;
+      const instances = (yield* settings.getSettings).providerInstances;
+      expect(instances[ProviderInstanceId.make("pi")]).toEqual({
+        driver: driver("pi"),
+        enabled: false,
+      });
+      expect(instances[ProviderInstanceId.make("opencode")]).toBeUndefined();
+      expect(instances[ProviderInstanceId.make("noname")]).toEqual({
+        driver: driver("noname"),
+        enabled: true,
+      });
+    }).pipe(
+      Effect.provide(
+        ServerSettingsService.layerTest({
+          providerInstances: {
+            [ProviderInstanceId.make("pi")]: {
+              driver: ProviderDriverKind.make("pi"),
+              enabled: false,
+            },
+          },
+        }).pipe(Layer.provideMerge(NodeServices.layer)),
+      ),
+    ),
+  );
 });
 
 describe("seedDevReplayInstance", () => {

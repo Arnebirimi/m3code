@@ -30,6 +30,13 @@ the official T3 Code mobile app keeps working against this fork's server.
 
 ## 2026-11-08: NoName
 
+### Changed
+
+- **Local agents switch on where they are found.** When a T3 server starts, it turns on Pi or
+  OpenCode if the command is on its PATH, and NoName if a NoName server answers on port 8890, so
+  they appear in the model picker without a trip to Settings. An agent configured on that machine
+  before, including one turned off, is left as it is.
+
 ### Added
 
 - **NoName provider.** T3 Code runs the NoName agent harness the way it runs Pi: add **NoName** in

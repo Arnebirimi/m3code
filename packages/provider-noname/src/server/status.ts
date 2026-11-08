@@ -59,7 +59,7 @@ export const buildInitialNoNameProviderSnapshot = Effect.fn("NoNameProvider.buil
   function* (settings: NoNameSettings): Effect.fn.Return<ServerProviderDraft> {
     const now = yield* DateTime.now;
     return snapshot(settings, DateTime.formatIso(now), {
-      installed: settings.enabled,
+      installed: false,
       version: null,
       status: "warning",
       auth: { status: "unknown" },
@@ -118,5 +118,19 @@ export const checkNoNameProviderStatus = Effect.fn("NoNameProvider.checkStatus")
       auth: { status: "unknown" },
     },
     listed,
+  );
+});
+
+/** Whether a NoName server answers at the default address, for switching NoName on where it runs. */
+export const noNameServerAnswers = Effect.fn("NoNameProvider.serverAnswers")(function* () {
+  const url = noNameServerUrl({ serverUrl: "" });
+  return yield* Effect.gen(function* () {
+    const client = yield* makeNoNameClient(url);
+    yield* client.health;
+    return true;
+  }).pipe(
+    Effect.timeout(PROBE_TIMEOUT),
+    Effect.provide(FetchHttpClient.layer),
+    Effect.orElseSucceed(() => false),
   );
 });

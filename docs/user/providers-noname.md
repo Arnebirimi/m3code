@@ -5,7 +5,7 @@ T3 Code can run NoName, an agent harness that serves its own chat page and runs 
 ## Set up NoName
 
 1. Start NoName on the machine that runs the T3 Code server (`./start.sh` in its folder). For a machine you added over SSH, that is the remote machine.
-2. Open **Settings → Providers**, add **NoName** for that machine, and enable it.
+2. Restart T3 Code, or the machine's T3 Code server. It switches NoName on when the server answers, unless you turned NoName off there. Otherwise, enable NoName in **Settings → Providers** for that machine.
 3. If NoName does not listen on port 8890 of that machine, set **Server URL**, such as `http://127.0.0.1:9000`.
 
 The provider shows an error until the server answers.
