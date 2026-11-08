@@ -123,6 +123,16 @@ Linked providers send their requests through T3 Code, which:
   your other machines with **Add here**, with `localhost` already changed to the machine that runs
   them.
 
+### NoName as a provider
+
+- **NoName runs in T3 Code like Pi**: add **NoName** in Settings → Providers and pick it in the
+  model picker. A thread drives the NoName server on the same machine (port 8890 by default, or
+  any **Server URL**), in agent mode in the thread's folder. It works on SSH machines too.
+- **Its models, its tools**: the picker lists every model of NoName's own providers. NoName's
+  replies, reasoning, tool calls with their diffs, plans, approvals and questions show up as T3
+  threads, and **Stop** stops NoName.
+- See [NoName](./docs/user/providers-noname.md).
+
 ### A calmer sidebar
 
 - **Thread cards read title first**: the title with its status and time, then one quiet line with

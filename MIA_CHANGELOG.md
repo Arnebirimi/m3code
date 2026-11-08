@@ -28,6 +28,20 @@ the official T3 Code mobile app keeps working against this fork's server.
 - Pi compaction preserves errors and unfinished work. Its instructions tell the model not to copy secrets; this is not a secret filter.
 - Model-quality benchmarks have not been run because no local inference server was reachable.
 
+## 2026-11-08: NoName
+
+### Added
+
+- **NoName provider.** T3 Code runs the NoName agent harness the way it runs Pi: add **NoName** in
+  Settings → Providers (it reads `http://127.0.0.1:8890` unless **Server URL** says otherwise) and
+  pick it in the model picker. Each thread is one NoName conversation in agent mode in the
+  thread's folder. A small bridge (`t3 noname-acp`) speaks ACP to T3 Code and NoName's own HTTP
+  API to NoName, so replies, reasoning, tool calls with diffs, plans, approvals (Allow once or
+  Deny; NoName's lasting "Always allow" is not offered) and `ask_user` questions appear as they
+  do for other agents. **Stop** waits until NoName confirms the turn ended. The model picker lists
+  **NoName default** and every model of NoName's switched-on providers. Not yet: T3 tools inside
+  NoName, rollback, and background writing.
+
 ## 2026-11-07, night: remote machines
 
 ### Added

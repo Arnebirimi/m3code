@@ -13,6 +13,7 @@ import { fxClient } from "@t3tools/provider-fx/client";
 import { grokClient } from "@t3tools/provider-grok/client";
 import { kiroClient } from "@t3tools/provider-kiro/client";
 import { museClient } from "@t3tools/provider-muse/client";
+import { noNameClient } from "@t3tools/provider-noname/client";
 import { openCodeClient } from "@t3tools/provider-opencode/client";
 import { piClient } from "@t3tools/provider-pi/client";
 
@@ -31,6 +32,7 @@ export const openRouterIcon: ProviderIcon = {
 export const providerClients = makeProviderClientRegistry([
   piClient,
   openCodeClient,
+  noNameClient,
   {
     driverKind: ProviderDriverKind.make("codex"),
     label: "Codex",

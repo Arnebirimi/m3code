@@ -39,6 +39,7 @@ const workspaceFiles = [
   "packages/provider-grok/package.json",
   "packages/provider-kiro/package.json",
   "packages/provider-muse/package.json",
+  "packages/provider-noname/package.json",
   "packages/provider-opencode/package.json",
   "packages/issue-tracker-linear/package.json",
   "packages/secret-provider-core/package.json",
