@@ -1,7 +1,9 @@
 import { BUILT_IN_THEMES } from "@t3tools/shared/themePalettes";
 import type { DarkStyle } from "@t3tools/contracts/settings";
+import { msg, T, useGT, useMessages } from "gt-react";
 import { MonitorIcon, MoonIcon, MoonStarIcon, PaletteIcon, SunIcon } from "lucide-react";
 
+import { m } from "../i18n/messages";
 import { useCustomThemes } from "../hooks/useCustomThemes";
 import { useEnvironmentThemeDefinitions } from "../hooks/useEnvironmentTheme";
 import { updateClientSettings, useClientSettings } from "../hooks/useSettings";
@@ -22,10 +24,10 @@ import {
 import { stackedThreadToast, toastManager } from "./ui/toast";
 
 export const APPEARANCE_OPTIONS = [
-  { key: "system", mode: "system", darkStyle: null, label: "System", icon: MonitorIcon },
-  { key: "light", mode: "light", darkStyle: null, label: "Light", icon: SunIcon },
-  { key: "dark", mode: "dark", darkStyle: "gray", label: "Dark", icon: MoonIcon },
-  { key: "oled", mode: "dark", darkStyle: "oled", label: "OLED", icon: MoonStarIcon },
+  { key: "system", mode: "system", darkStyle: null, label: msg("System"), icon: MonitorIcon },
+  { key: "light", mode: "light", darkStyle: null, label: msg("Light"), icon: SunIcon },
+  { key: "dark", mode: "dark", darkStyle: "gray", label: msg("Dark"), icon: MoonIcon },
+  { key: "oled", mode: "dark", darkStyle: "oled", label: msg("OLED"), icon: MoonStarIcon },
 ] as const;
 export type AppearanceOption = (typeof APPEARANCE_OPTIONS)[number];
 
@@ -43,7 +45,7 @@ export function appearanceLabel(mode: AppearanceOption["mode"], darkStyle: DarkS
   const option = APPEARANCE_OPTIONS.find((candidate) =>
     isAppearanceOptionActive(candidate, mode, darkStyle),
   );
-  return option?.label ?? mode;
+  return option ? m(option.label) : mode;
 }
 
 /** Picks the mode, and for Dark or OLED the standard theme's dark style on this device. */
@@ -59,8 +61,8 @@ export function notifyThemeSaveFailure(): void {
   toastManager.add(
     stackedThreadToast({
       type: "error",
-      title: "Couldn't save theme selection",
-      description: "Try again.",
+      title: m(msg("Couldn't save theme selection")),
+      description: m(msg("Try again.")),
     }),
   );
 }
@@ -95,30 +97,39 @@ export function useCommandPaletteThemeItems() {
   } = useTheme();
   const themeCards = useThemeCards();
   const darkStyle = useClientSettings((settings) => settings.darkStyle);
+  const gt = useGT();
+  const messages = useMessages();
 
   const changeThemeItem: CommandPaletteSubmenuItem = {
     kind: "submenu",
     value: "action:change-theme",
     searchTerms: ["change theme", "appearance", "colors", "palette"],
-    title: "Change theme",
+    title: gt("Change theme"),
     icon: <PaletteIcon className={ITEM_ICON_CLASS} />,
     addonIcon: <PaletteIcon className={ADDON_ICON_CLASS} />,
     shortcutCommand: "theme.select",
     groups: [
       {
         value: "themes",
-        label: "Change theme",
+        label: gt("Change theme"),
         items: themeCards.map(({ id, label, previews }) => ({
           kind: "action",
           value: id === null ? "theme:standard" : `theme:palette:${id}`,
           title: label,
-          description: previews.length === 1 ? `For ${previews[0]!.mode} mode` : undefined,
+          description:
+            previews.length === 1
+              ? previews[0]!.mode === "light"
+                ? gt("For light mode")
+                : gt("For dark mode")
+              : undefined,
           searchTerms: [label, "theme", "appearance"],
           icon: <PaletteIcon className={ITEM_ICON_CLASS} />,
           titleTrailingContent: (
             <span className="flex shrink-0 items-center gap-2">
               {(themeHalves?.[resolvedTheme] ?? getThemeDefinition(theme)?.id ?? null) === id ? (
-                <span className="text-xs text-muted-foreground/70">Current</span>
+                <span className="text-xs text-muted-foreground/70">
+                  <T context="the theme or mode in use now">Current</T>
+                </span>
               ) : null}
               <span className="flex items-center gap-1" aria-hidden>
                 {previews.map((preview) => (
@@ -148,22 +159,24 @@ export function useCommandPaletteThemeItems() {
     kind: "submenu",
     value: "action:change-appearance",
     searchTerms: ["change appearance", "light", "dark", "oled", "system", "mode", "toggle"],
-    title: "Change appearance",
+    title: gt("Change appearance"),
     icon: <MonitorIcon className={ITEM_ICON_CLASS} />,
     addonIcon: <MonitorIcon className={ADDON_ICON_CLASS} />,
     shortcutCommand: "appearance.cycle",
     groups: [
       {
         value: "appearance",
-        label: "Change appearance",
+        label: gt("Change appearance"),
         items: APPEARANCE_OPTIONS.map((option) => ({
           kind: "action",
           value: `appearance:${option.key}`,
-          title: option.label,
-          searchTerms: [option.label, "appearance", "mode"],
+          title: messages(option.label),
+          searchTerms: [messages(option.label), option.label, "appearance", "mode"],
           icon: <option.icon className={ITEM_ICON_CLASS} />,
           titleTrailingContent: isAppearanceOptionActive(option, appearanceMode, darkStyle) ? (
-            <span className="text-xs text-muted-foreground/70">Current</span>
+            <span className="text-xs text-muted-foreground/70">
+              <T context="the theme or mode in use now">Current</T>
+            </span>
           ) : undefined,
           run: async () => {
             if (!applyAppearanceOption(option, setAppearanceMode)) notifyThemeSaveFailure();
@@ -177,7 +190,7 @@ export function useCommandPaletteThemeItems() {
     kind: "action",
     value: "action:theme-editor",
     searchTerms: ["theme", "appearance", "colors", "palette", "customize"],
-    title: "Toggle theme editor",
+    title: gt("Toggle theme editor"),
     icon: <PaletteIcon className={ITEM_ICON_CLASS} />,
     shortcutCommand: "themeEditor.toggle",
     run: async () => {

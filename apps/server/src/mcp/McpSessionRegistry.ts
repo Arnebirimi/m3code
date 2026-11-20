@@ -89,18 +89,26 @@ export class McpSessionRegistry extends Context.Service<
   McpSessionRegistryShape
 >()("t3/mcp/McpSessionRegistry") {}
 
+interface AliveMark {
+  readonly wallMs: number;
+  readonly monotonicMs: number;
+}
+
 type CredentialRecord =
   | {
       readonly kind: "mcp";
       readonly tokenHash: string;
       readonly scope: McpInvocationContext.McpThreadInvocationScope;
-      readonly lastAliveAt: number;
+      readonly lastAlive: AliveMark;
+      /** Set when a request finds the token idle; only `touch` clears it, whatever the clocks do. */
+      readonly expired: boolean;
     }
   | {
       readonly kind: "inference";
       readonly tokenHash: string;
       readonly caller: InferenceCaller;
-      readonly lastAliveAt: number;
+      readonly lastAlive: AliveMark;
+      readonly expired: boolean;
       readonly expiresAt?: number;
     };
 
@@ -115,6 +123,7 @@ interface RegistryState {
 
 export interface McpSessionRegistryOptions {
   readonly livenessWindowMs?: number;
+  /** Drives both the wall and monotonic readings. */
   readonly now?: () => number;
 }
 
@@ -133,6 +142,11 @@ const bytesToHex = (bytes: Uint8Array): string =>
 
 const tokenFromBytes = (bytes: Uint8Array): string => Buffer.from(bytes).toString("base64url");
 
+// The larger elapsed reading wins: stepping the wall clock back cannot extend a token,
+// and wall time that passes while the host sleeps still counts.
+const idleMs = (since: AliveMark, now: AliveMark): number =>
+  Math.max(now.wallMs - since.wallMs, now.monotonicMs - since.monotonicMs);
+
 const getHttpMcpEndpointHost = (address: NetAddress.IpAddress): string =>
   NetAddress.isUnspecified(address)
     ? "127.0.0.1"
@@ -147,7 +161,18 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
   const environmentId = yield* environment.getEnvironmentId;
   const httpServer = yield* HttpServer.HttpServer;
   const state = yield* SynchronizedRef.make<RegistryState>({ records: new Map() });
-  const currentTimeMillis = options.now ? Effect.sync(options.now) : Clock.currentTimeMillis;
+  const { now } = options;
+  const currentAliveMark: Effect.Effect<AliveMark> = now
+    ? Effect.sync(() => {
+        const timestamp = now();
+        return { wallMs: timestamp, monotonicMs: timestamp };
+      })
+    : Effect.all({
+        wallMs: Clock.currentTimeMillis,
+        monotonicMs: Clock.monotonicTimeNanos.pipe(
+          Effect.map((nanos) => Number(nanos / 1_000_000n)),
+        ),
+      });
   const livenessWindowMs = options.livenessWindowMs ?? DEFAULT_LIVENESS_WINDOW_MS;
   const endpoint = NetAddress.isInetAddress(httpServer.address)
     ? `http://${getHttpMcpEndpointHost(httpServer.address.address)}:${httpServer.address.port}/mcp`
@@ -172,7 +197,7 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
 
   const issue: McpSessionRegistryShape["issue"] = Effect.fn("McpSessionRegistry.issue")(
     function* (request) {
-      const issuedAt = yield* currentTimeMillis;
+      const issuedAlive = yield* currentAliveMark;
       const providerSessionId = yield* random.uuidV4();
       const { rawToken, tokenHash } = yield* mintToken;
       const browserToolsAvailable = request.browserToolsAvailable ?? true;
@@ -190,11 +215,12 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
           "orchestration",
           "worktree",
           "pull-requests",
+          "issues",
           ...(request.capabilities ?? (browserToolsAvailable ? (["preview"] as const) : [])),
         ]),
-        issuedAt,
+        issuedAt: issuedAlive.wallMs,
       };
-      yield* store({ kind: "mcp", tokenHash, scope, lastAliveAt: issuedAt });
+      yield* store({ kind: "mcp", tokenHash, scope, lastAlive: issuedAlive, expired: false });
       let inferenceGateway: McpProviderSession.InferenceGatewayCredential | undefined;
       const server = request.inferenceServer;
       if (server !== undefined) {
@@ -209,7 +235,8 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
             providerSessionId,
             providerInstanceId: scope.thread.providerInstanceId,
           },
-          lastAliveAt: issuedAt,
+          lastAlive: issuedAlive,
+          expired: false,
         });
         inferenceGateway = {
           serverId: server.id,
@@ -239,21 +266,23 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
   ) {
     if (rawToken.length === 0) return undefined;
     const tokenHash = yield* hashToken(rawToken);
-    const timestamp = yield* currentTimeMillis;
+    const alive = yield* currentAliveMark;
     return yield* SynchronizedRef.modify(state, ({ records }) => {
       const record = records.get(tokenHash);
-      if (
-        !record ||
-        record.kind !== kind ||
-        timestamp - record.lastAliveAt > livenessWindowMs ||
-        (record.kind === "inference" &&
-          record.expiresAt !== undefined &&
-          timestamp > record.expiresAt)
-      ) {
+      if (!record || record.kind !== kind || record.expired)
         return [undefined, { records }] as const;
+      const absoluteExpired =
+        record.kind === "inference" &&
+        record.expiresAt !== undefined &&
+        alive.wallMs > record.expiresAt;
+      if (idleMs(record.lastAlive, alive) > livenessWindowMs || absoluteExpired) {
+        if (absoluteExpired) return [undefined, { records }] as const;
+        const next = new Map(records);
+        next.set(tokenHash, { ...record, expired: true });
+        return [undefined, { records: next }] as const;
       }
       const next = new Map(records);
-      next.set(tokenHash, { ...record, lastAliveAt: timestamp });
+      next.set(tokenHash, { ...record, lastAlive: alive });
       return [record as Extract<CredentialRecord, { kind: K }>, { records: next }] as const;
     });
   });
@@ -273,7 +302,7 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
   const issueBackgroundInference: McpSessionRegistryShape["issueBackgroundInference"] = Effect.fn(
     "McpSessionRegistry.issueBackgroundInference",
   )(function* ({ id: serverId, config: pinned }, providerInstanceId) {
-    const issuedAt = yield* currentTimeMillis;
+    const issuedAlive = yield* currentAliveMark;
     const minted = yield* Effect.acquireRelease(mintToken, ({ tokenHash }) =>
       SynchronizedRef.update(state, ({ records }) => {
         const next = new Map(records);
@@ -284,9 +313,13 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
     yield* store({
       kind: "inference",
       tokenHash: minted.tokenHash,
-      lastAliveAt: issuedAt,
+      lastAlive: issuedAlive,
+      expired: false,
       ...(providerInstanceId === undefined
-        ? { caller: { serverId, pinned }, expiresAt: issuedAt + BACKGROUND_INFERENCE_TTL_MS }
+        ? {
+            caller: { serverId, pinned },
+            expiresAt: issuedAlive.wallMs + BACKGROUND_INFERENCE_TTL_MS,
+          }
         : { caller: { serverId, pinned, providerInstanceId } }),
     });
     return { serverId, baseUrl: gatewayBaseUrl(serverId), token: minted.rawToken };
@@ -327,12 +360,12 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
 
   const touch: McpSessionRegistryShape["touch"] = Effect.fn("McpSessionRegistry.touch")(
     function* (threadId) {
-      const timestamp = yield* currentTimeMillis;
+      const alive = yield* currentAliveMark;
       yield* SynchronizedRef.update(state, ({ records }) => {
         const next = new Map(records);
         for (const [tokenHash, record] of records) {
           if (threadOf(record) === threadId) {
-            next.set(tokenHash, { ...record, lastAliveAt: timestamp });
+            next.set(tokenHash, { ...record, lastAlive: alive, expired: false });
           }
         }
         return { records: next };

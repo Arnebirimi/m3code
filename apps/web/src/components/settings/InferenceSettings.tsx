@@ -68,7 +68,7 @@ import {
   resolveRemoteOperateAccess,
 } from "./ProviderSettingsPanel.logic";
 import { useSettingsScope } from "./SettingsScopeContext";
-import { searchableSetting } from "./settingsSearch";
+import { useSearchableSetting } from "./settingsSearch";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 
 const EMPTY_STATE =
@@ -96,6 +96,7 @@ export function InferenceSettingsPanel({
   /** Clears the link's request once its dialog closes, so the same link works again. */
   readonly onLinkHandled?: () => void;
 }) {
+  const searchableSetting = useSearchableSetting();
   const { scope, environment } = useSettingsScope();
   // Servers without inference support (such as upstream's release) omit the snapshot field.
   const lacksInference =
@@ -147,6 +148,7 @@ function EnvironmentInferenceServers({
   readonly repairServerId: string | undefined;
   readonly onLinkHandled: (() => void) | undefined;
 }) {
+  const searchableSetting = useSearchableSetting();
   const environmentId = environment.environmentId;
   const sessionState = useEnvironmentSessionState(environmentId);
   // The server requires the provider-management grant for inference servers.

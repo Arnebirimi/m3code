@@ -17,7 +17,6 @@ import { AuthOrchestrationOperateScope, type EnvironmentId } from "@t3tools/cont
 import { useNavigate } from "@tanstack/react-router";
 
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
-import { isSidebarHiddenThread } from "../components/Sidebar.logic";
 import { newProjectId } from "../lib/utils";
 import { useProjects, useVisibleThreadShells } from "../state/entities";
 import { useEnvironments } from "../state/environments";
@@ -72,7 +71,7 @@ export function useAddProjectAtPath() {
   const navigate = useNavigate();
   const { environments } = useEnvironments();
   const projects = useProjects();
-  const threads = useVisibleThreadShells().filter((thread) => !isSidebarHiddenThread(thread));
+  const threads = useVisibleThreadShells();
   const sortOrder = useClientSettings((settings) => settings.sidebarThreadSortOrder);
   const handleNewThread = useNewThreadHandler();
   const createProject = useAtomCommand(projectEnvironment.create, { reportFailure: false });

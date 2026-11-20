@@ -126,8 +126,10 @@ export const invalidateSettingsSecrets = Effect.fn("SettingsSecrets.invalidate")
       | "sourceControlHosts"
       | "usageLimitSources"
       | "inferenceServers"
+      | "textGenerators"
       | "easDeviceHosts"
       | "simlockDeviceHosts"
+      | "cloudSpeechCredentials"
     >,
     E
   >,
@@ -137,7 +139,11 @@ export const invalidateSettingsSecrets = Effect.fn("SettingsSecrets.invalidate")
       ...collectSourceControlHostSecretReferences(current.sourceControlHosts),
       ...collectUsageLimitSecretReferences(current.usageLimitSources),
       ...collectInferenceServerSecretReferences(current.inferenceServers),
+      ...Object.values(current.textGenerators).flatMap(({ apiKey }) =>
+        isSecretReference(apiKey) ? [apiKey] : [],
+      ),
       ...collectDeviceHostSecretReferences(current),
+      ...Object.values(current.cloudSpeechCredentials).filter(isSecretReference),
     ]),
     Effect.orElseSucceed(() => undefined),
   );

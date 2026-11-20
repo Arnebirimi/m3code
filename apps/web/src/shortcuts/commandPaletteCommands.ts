@@ -1,4 +1,5 @@
 import type { AnyRouter } from "@tanstack/react-router";
+import { msg } from "gt-react";
 
 import {
   dispatchCommandPalette,
@@ -6,11 +7,17 @@ import {
   useCommandPaletteStore,
 } from "../commandPaletteStore";
 import { overlayModeForCommand } from "../components/CommandPalette.logic";
-import { appearanceLabel, notifyThemeSaveFailure } from "../components/CommandPaletteThemeItems";
+import {
+  APPEARANCE_OPTIONS,
+  appearanceLabel,
+  applyAppearanceOption,
+  notifyThemeSaveFailure,
+} from "../components/CommandPaletteThemeItems";
 import { toggleThemeEditorForTheme } from "../components/settings/themeEditorStore";
 import { toastManager } from "../components/ui/toast";
 import { getClientSettings } from "../hooks/useSettings";
 import { getThemeSnapshot, setAppearanceMode } from "../hooks/useTheme";
+import { m } from "../i18n/messages";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { type CommandHandler, type CommandScopeOptions, registerCommands } from "./dispatcher";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
@@ -51,7 +58,7 @@ export function installCommandPaletteCommands(
       capture: true,
       when: isCommandPaletteMounted,
       onKeyDown: (event) => {
-        if (event.isComposing || event.key !== "Escape") return false;
+        if (event.isComposing || event.keyCode === 229 || event.key !== "Escape") return false;
         const { open, mode } = useCommandPaletteStore.getState();
         if (!open || mode === "command") return false;
         consume(event);
@@ -66,15 +73,23 @@ export function installCommandPaletteCommands(
         consume(event);
         if (event.repeat) return;
         const { appearanceMode } = getThemeSnapshot();
-        const nextMode =
-          appearanceMode === "system" ? "light" : appearanceMode === "light" ? "dark" : "system";
-        if (!setAppearanceMode(nextMode)) {
+        const darkStyle = getClientSettings().darkStyle;
+        const index = APPEARANCE_OPTIONS.findIndex(
+          (option) =>
+            option.mode === appearanceMode &&
+            (option.darkStyle === null || option.darkStyle === darkStyle),
+        );
+        const nextOption = APPEARANCE_OPTIONS[(index + 1) % APPEARANCE_OPTIONS.length]!;
+        const nextMode = nextOption.mode;
+        if (!applyAppearanceOption(nextOption, setAppearanceMode)) {
           notifyThemeSaveFailure();
           return;
         }
         toastManager.add({
           id: "appearance-cycle",
-          title: `Appearance: ${appearanceLabel(nextMode, getClientSettings().darkStyle)}`,
+          title: m(msg("Appearance: {appearance}"), {
+            appearance: appearanceLabel(nextMode, darkStyle),
+          }),
           timeout: 1500,
         });
       },

@@ -10,10 +10,12 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
+import * as ProviderInstallationGate from "../provider/ProviderInstallationGate.ts";
 import * as ProviderInstanceRegistry from "../provider/ProviderInstanceRegistry.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as TextGeneration from "./TextGeneration.ts";
+import * as TextGenerators from "./TextGenerators.ts";
 
 const codex = ProviderInstanceId.make("codex");
 const piLocal = ProviderInstanceId.make("pi_local");
@@ -62,7 +64,7 @@ function setup(input: {
       },
     }) as unknown as ProviderInstance;
   const instances = input.providers.map(instance);
-  const layer = TextGeneration.layer.pipe(
+  const layer = Layer.effect(TextGeneration.TextGeneration, TextGeneration.make).pipe(
     Layer.provide(
       Layer.mergeAll(
         Layer.mock(ProviderInstanceRegistry.ProviderInstanceRegistry)({
@@ -72,6 +74,11 @@ function setup(input: {
         }),
         Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
           resolveLink: () => Effect.die("unused"),
+        }),
+        ProviderInstallationGate.layer,
+        Layer.mock(TextGenerators.TextGenerators)({
+          runner: () => Effect.undefined,
+          listModels: () => Effect.die("unused"),
         }),
         ServerSettings.ServerSettingsService.layerTest(input.settings ?? {}),
       ),

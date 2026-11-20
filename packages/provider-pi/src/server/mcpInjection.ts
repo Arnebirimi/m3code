@@ -253,7 +253,21 @@ export const materializePiT3McpExtension = Effect.fn("materializePiT3McpExtensio
 ) {
   const fs = yield* FileSystem.FileSystem;
   yield* fs.makeDirectory(cacheDir, { recursive: true });
-  return yield* materializeSource(piT3McpExtensionDestPath(cacheDir), PI_T3_MCP_EXTENSION_SOURCE);
+  const dest = piT3McpExtensionDestPath(cacheDir);
+  const existing = yield* fs.readFileString(dest).pipe(Effect.orElseSucceed(() => ""));
+  if (existing !== PI_T3_MCP_EXTENSION_SOURCE) {
+    // Concurrent pi launches read this file: stage it in a per-call directory
+    // and rename so readers and other writers never see a partial file.
+    yield* Effect.scoped(
+      Effect.gen(function* () {
+        const stagingDir = yield* fs.makeTempDirectoryScoped({ directory: cacheDir });
+        const staging = `${stagingDir.replace(/\\/g, "/")}/${PI_T3_MCP_EXTENSION_FILENAME}`;
+        yield* fs.writeFileString(staging, PI_T3_MCP_EXTENSION_SOURCE);
+        yield* fs.rename(staging, dest).pipe(Effect.retry({ times: 3 }));
+      }),
+    );
+  }
+  return dest;
 });
 
 /** For discovery and text generation, which run without T3's full extension. */
