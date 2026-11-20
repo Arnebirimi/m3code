@@ -6,6 +6,7 @@ export interface InferenceUsage {
   readonly promptTokens: number | null;
   readonly cachedPromptTokens: number | null;
   readonly completionTokens: number | null;
+  readonly reasoningTokens: number | null;
 }
 
 export interface UsageMeter {
@@ -14,6 +15,10 @@ export interface UsageMeter {
   /** Whether a stream reached its protocol's terminal event; clients may disconnect right after it. */
   readonly finished: () => boolean;
   readonly finish: () => InferenceUsage;
+  /** True only for a terminal response that emitted no answer, reasoning, or tool work. */
+  readonly empty: () => boolean;
+  /** A small, already parsed non-streaming error body, never its raw text. */
+  readonly errorBody: () => unknown;
   /** The upstream's id for a Responses API response, which later requests may reference. */
   readonly responseId: () => string | undefined;
 }
@@ -52,6 +57,7 @@ interface Tally {
   prompt?: number;
   cached?: number;
   completion?: number;
+  reasoning?: number;
   terminal?: boolean;
   responseId?: string;
 }
@@ -70,6 +76,8 @@ function readOpenAiUsage(usage: unknown, tally: Tally) {
   if (completion !== undefined) tally.completion = completion;
   const cached = count(field(usage, "prompt_tokens_details", "cached_tokens"));
   if (cached !== undefined) tally.cached = cached;
+  const reasoning = count(field(usage, "completion_tokens_details", "reasoning_tokens"));
+  if (reasoning !== undefined) tally.reasoning = reasoning;
 }
 
 function readResponsesUsage(usage: unknown, tally: Tally) {
@@ -80,6 +88,8 @@ function readResponsesUsage(usage: unknown, tally: Tally) {
   if (completion !== undefined) tally.completion = completion;
   const cached = count(field(usage, "input_tokens_details", "cached_tokens"));
   if (cached !== undefined) tally.cached = cached;
+  const reasoning = count(field(usage, "output_tokens_details", "reasoning_tokens"));
+  if (reasoning !== undefined) tally.reasoning = reasoning;
 }
 
 /** Anthropic's input_tokens excludes cache reads and writes; the prompt is their sum. */
@@ -215,6 +225,12 @@ function readBody(api: InferenceApi, body: unknown, tally: Tally) {
     readResponseId(body, tally);
   } else if (api === "messages") readAnthropicUsage(usage, tally);
   else readOpenAiUsage(usage, tally);
+  const bodyEvent =
+    api === "messages" && isRecord(body) && body.stop_reason !== undefined
+      ? { ...body, type: "message_stop" }
+      : body;
+  const content = readEvent(api, bodyEvent, tally);
+  if (content) sawContent = true;
 }
 
 /**
@@ -233,6 +249,7 @@ export function makeUsageMeter(
   let skippingLine = false;
   let bodyTooLarge = false;
   let sawContent = false;
+  let errorBody: unknown;
 
   const readLine = (line: string): boolean => {
     if (!line.startsWith("data:")) return false;
@@ -293,19 +310,24 @@ export function makeUsageMeter(
     if (streaming) {
       if (!skippingLine) readLine((pending + rest).trim());
     } else if (!bodyTooLarge && pending.length + rest.length <= MAX_BODY_CHARS) {
-      readBody(api, parseJson(pending + rest), tally);
+      const body = parseJson(pending + rest);
+      readBody(api, body, tally);
+      errorBody = body;
     }
     pending = "";
     return {
       promptTokens: tally.prompt ?? null,
       cachedPromptTokens: tally.cached ?? null,
       completionTokens: tally.completion ?? null,
+      reasoningTokens: tally.reasoning ?? null,
     };
   };
 
   return {
     push,
     finished: () => tally.terminal === true,
+    empty: () => tally.terminal === true && !sawContent,
+    errorBody: () => errorBody,
     finish,
     responseId: () => tally.responseId,
   };

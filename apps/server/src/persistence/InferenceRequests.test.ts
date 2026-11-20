@@ -37,6 +37,9 @@ const row = (
   promptTokens: null,
   cachedPromptTokens: null,
   completionTokens: null,
+  failureCause: null,
+  upstreamHttpStatus: null,
+  reasoningTokens: null,
   ...overrides,
 });
 
@@ -67,7 +70,14 @@ it.effect("aggregates by server, model, and purpose, excluding missing measureme
         completionTokens: 10,
       }),
     );
-    yield* log.record(row(3, { receivedAt: now - 3 * HOUR, status: "failed", queueWaitMs: 20 }));
+    yield* log.record(
+      row(3, {
+        receivedAt: now - 3 * HOUR,
+        status: "failed",
+        queueWaitMs: 20,
+        failureCause: "watchdog-loop",
+      }),
+    );
     yield* log.record(row(6, { receivedAt: now - 5 * HOUR, status: "rejected" }));
     yield* log.record(row(4, { receivedAt: now - 2 * DAY, purpose: "background", ttftMs: 5 }));
     yield* log.record(row(5, { receivedAt: now - 8 * DAY }));
@@ -85,7 +95,12 @@ it.effect("aggregates by server, model, and purpose, excluding missing measureme
         cachedPromptTokens: 40,
         promptTokensWithCacheData: 50,
         completionTokens: 30,
-        lastFailure: { status: "failed", at: "1970-01-10T21:00:00.000Z" },
+        lastFailure: {
+          status: "failed",
+          at: "1970-01-10T21:00:00.000Z",
+          cause: "watchdog-loop",
+          advice: "The model repeated itself; try a different model or reasoning profile.",
+        },
         queueWaitMs: { n: 3, p50: 20, p95: 30 },
         ttftMs: { n: 2, p50: 100, p95: 300 },
         decodeTokensPerSecond: { n: 2, p50: 5, p95: 20 },

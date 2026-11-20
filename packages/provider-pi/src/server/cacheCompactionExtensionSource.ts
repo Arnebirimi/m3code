@@ -37,7 +37,7 @@ Write a structured context checkpoint that you will use to continue the work, in
 - [Any data, examples, or references needed to continue]
 - [Or "(none)" if not applicable]
 
-Keep each section concise. Preserve exact file paths, function names, commands, and error messages.`;
+Keep each section concise. Preserve exact file paths, function names, commands, and error messages. Never include secrets, credentials, tokens, passwords, or their values; name only the approved way to retrieve them again.`;
 
 /**
  * Managed Pi compaction that reuses the inference server's prompt cache: the summary request is the

@@ -110,6 +110,7 @@ import Migration121 from "./Migrations/121_BackgroundRecoveryIndexes.ts";
 import Migration122 from "./Migrations/122_TurnStartReadIndexes.ts";
 import Migration123 from "./Migrations/123_DelegatedTaskReadIndexes.ts";
 import Migration124 from "./Migrations/124_ThreadItemCounts.ts";
+import Migration125 from "./Migrations/125_InferenceDiagnostics.ts";
 import Migration081 from "./Migrations/081_InferenceRequests.ts";
 import Migration082 from "./Migrations/082_InferenceRequestRouting.ts";
 
@@ -220,6 +221,7 @@ const migrationEntries = [
   [122, "TurnStartReadIndexes", Migration122],
   [123, "DelegatedTaskReadIndexes", Migration123],
   [124, "ThreadItemCounts", Migration124],
+  [125, "InferenceDiagnostics", Migration125],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);

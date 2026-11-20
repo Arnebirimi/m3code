@@ -5,6 +5,28 @@ changes on top of upstream [T3 Code](https://github.com/pingdotgg/t3code). It is
 `b90e554e0` (2026-11-06). Newest first. Every change to the client–server protocol is additive, so
 the official T3 Code mobile app keeps working against this fork's server.
 
+## 2026-11-20: local-model reliability
+
+### Added
+
+- Offline coding tests and sample projects to evaluate local models consistently.
+- Clearer diagnostics for timeouts, cancellations, repetitive loops, and invalid responses.
+- Reasoning-token tracking and actionable failure advice to the usage dashboard.
+- One safe retry for empty replies or a rejected optional setting.
+- A dated local-model improvement plan with measurable prerequisites for model benchmarks.
+
+### Fixed
+
+- Retries no longer repeat tool actions, cancelled requests, or network failures.
+- The watchdog now reliably stops repetitive responses, including when the final chunk contains the repetition.
+- Worktree tools request the base Git reference only when needed.
+- Lean prompts no longer include unnecessary browser and device instructions.
+
+### Improved
+
+- Context compaction preserves errors and unfinished work, and its instructions discourage copying secrets.
+- Model-quality benchmarks remain pending until a local inference server is reachable; no results are inferred.
+
 ## 2026-11-07, night: remote machines
 
 ### Added

@@ -1,3 +1,4 @@
+/* oxlint-disable t3code/no-untranslated-copy -- Legacy local-compute section was not localized; diagnostics come from server-owned bounded categories. */
 import { useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId, InferenceUsageRow, InferenceUsageWindow } from "@t3tools/contracts";
 import { formatCount, formatTokens } from "@t3tools/shared/usageFormat";
@@ -179,6 +180,11 @@ function LocalComputeGroupRows({
       <tr className="border-b border-border/50 text-right text-muted-foreground tabular-nums">
         <td className="py-2 pl-2 text-left text-foreground">
           {name}
+          {single?.lastFailure?.advice ? (
+            <div className="max-w-md whitespace-normal text-xs text-warning-foreground">
+              {single.lastFailure.advice}
+            </div>
+          ) : null}
           {single ? (
             <span className="ms-2 text-xs text-muted-foreground">
               {INFERENCE_PURPOSE_LABELS[single.purpose]}
@@ -203,6 +209,11 @@ function LocalComputeGroupRows({
             >
               <td className="py-1.5 pl-6 text-left text-xs">
                 {INFERENCE_PURPOSE_LABELS[row.purpose]}
+                {row.lastFailure?.advice ? (
+                  <div className="max-w-md whitespace-normal text-warning-foreground">
+                    {row.lastFailure.advice}
+                  </div>
+                ) : null}
               </td>
               <CountCells totals={sumLocalCompute([row])} />
               <MeasuredCells row={row} />

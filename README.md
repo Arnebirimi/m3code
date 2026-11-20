@@ -4,6 +4,18 @@ This is a fork of [T3 Code](https://github.com/pingdotgg/t3code). For everything
 see the upstream README. This page covers only what this fork adds; [MIA_CHANGELOG.md](./MIA_CHANGELOG.md)
 lists every change in order.
 
+## Latest local-model improvements
+
+- **Offline coding evals**: sample projects and tests for evaluating local models consistently.
+- **Clearer failures**: diagnostics for timeouts, cancellations, repetitive loops, and invalid responses.
+- **Better usage details**: reasoning tokens and actionable failure advice in the usage dashboard.
+- **One safe retry**: empty replies or a rejected optional setting get one retry, without repeating tool actions, cancelled requests, or network failures.
+- **Reliable watchdog**: repetitive responses stop reliably, including when repetition fills the final chunk.
+- **Correct worktree tools**: the base Git reference is requested only when needed.
+- **Leaner prompts**: unnecessary browser and device instructions are omitted.
+- **Safer compaction**: errors and unfinished work are preserved, and instructions discourage copying secrets.
+- **Honest benchmarks**: model-quality comparisons wait until a local inference server is reachable.
+
 ## What's different
 
 Local models come first. Cloud providers keep working, but models on your own hardware are the

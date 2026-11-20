@@ -33,7 +33,7 @@ const entries = [
   entry("a1", toolCall("read", "src/a.ts")),
   entry("r1", { role: "toolResult" }),
   entry("a2", toolCall("edit", "src/b.ts")),
-  entry("r2", { role: "toolResult" }),
+  entry("r2", { role: "toolResult", content: "credential: sk-test-authored-fixture-only" }),
   entry("u2", { role: "user", content: "Status?" }),
   entry("a3", { role: "assistant", content: [{ type: "text", text: "Halfway." }] }),
 ];
@@ -151,6 +151,32 @@ describe("Pi prefix-reusing compaction", () => {
       "## Goal\nShip it.\n\n<read-files>\nold.ts\n</read-files>\n\n<modified-files>\nsrc/a.ts\n</modified-files>",
     );
     assert.deepEqual(result?.compaction.usage, { cacheRead: 39_936 });
+  });
+
+  it("preserves exact continuation state without copying a secret into the summary", async () => {
+    const secret = "sk-test-authored-fixture-only";
+    assert.include(PI_T3_COMPACTION_INSTRUCTION, "Never include secrets");
+    const { result, sent } = await compactWith({
+      reply: [
+        {
+          type: "text",
+          text: "## Goal\nFix parsing.\n\n## Progress\n### In Progress\n- [ ] Fix `JSON.parse` in src/parser.ts\n\n### Blocked\n- `TypeError: choices[0] is undefined` at src/parser.ts:42\n\n## Next Steps\n1. Add the regression fixture; do not rerun the successful edit in src/a.ts.",
+        },
+      ],
+    });
+    const summary = result?.compaction.summary as string;
+    assert.include(
+      summary,
+      "## Next Steps\n1. Add the regression fixture; do not rerun the successful edit in src/a.ts.",
+    );
+    assert.include(summary, "TypeError: choices[0] is undefined");
+    assert.include(summary, "<modified-files>\nsrc/a.ts\n</modified-files>");
+    assert.include(JSON.stringify(sent[0]!.payload), secret);
+    assert.notInclude(summary, secret);
+    assert.equal(result?.compaction.firstKeptEntryId, "a2");
+    // The replay retains its cached tool prefix; only a tool-free reply becomes compaction text.
+    assert.deepEqual((sent[0]!.payload as { tools: unknown }).tools, [{ name: "read" }]);
+    assert.isUndefined(result?.compaction.toolCalls);
   });
 
   it.each([

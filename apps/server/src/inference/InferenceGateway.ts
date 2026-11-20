@@ -31,6 +31,7 @@ import {
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
 import * as InferenceRequests from "../persistence/InferenceRequests.ts";
+import * as InferenceDiagnostics from "./InferenceDiagnostics.ts";
 import { requireSettingsSecret } from "../secrets/settingsSecretValue.ts";
 import * as InferenceAdmission from "./InferenceAdmission.ts";
 import * as InferenceRouting from "./InferenceRouting.ts";
@@ -41,6 +42,7 @@ import {
   makeInferenceWatchdog,
   type WatchdogReason,
 } from "./InferenceWatchdog.ts";
+import { recoverField } from "./InferenceRetry.ts";
 import { isPreDispatchFailure } from "./InferenceRouting.ts";
 import { parseBaseUrl } from "./InferenceServerRegistry.ts";
 import { makeUsageMeter } from "./inferenceUsage.ts";
@@ -450,6 +452,8 @@ const make = Effect.gen(function* () {
     const watching = prepared.streaming && config.watchdog?.enabled !== false;
     const watchdog = makeInferenceWatchdog();
     let pendingStop: WatchdogReason | undefined;
+    let upstreamHttpStatus: number | null = null;
+    let failureSignal: InferenceDiagnostics.InferenceSignal = "unknown";
     let progressed = false;
     const meter = makeUsageMeter(
       protocol!,
@@ -485,8 +489,13 @@ const make = Effect.gen(function* () {
     // later writer is a no-op.
     const lifetime = yield* Scope.make();
     const settled = yield* Ref.make(false);
-    const finish = Effect.fnUntraced(function* (status: InferenceRequests.InferenceRequestStatus) {
+    const finish = Effect.fnUntraced(function* (
+      status: InferenceRequests.InferenceRequestStatus,
+      signal?: InferenceDiagnostics.InferenceSignal,
+      watchdog?: InferenceDiagnostics.InferenceWatchdog,
+    ) {
       if (yield* Ref.getAndSet(settled, true)) return;
+      failureSignal = signal ?? failureSignal;
       const completedAt = yield* Clock.currentTimeMillis;
       const marks = yield* Ref.get(milestones);
       const target = yield* Ref.get(served);
@@ -516,6 +525,15 @@ const make = Effect.gen(function* () {
             ? null
             : completedAt - marks.firstContentAt,
         durationMs: completedAt - receivedAt,
+        failureCause:
+          status === "completed"
+            ? null
+            : InferenceDiagnostics.inferenceFailureCause(
+                status === "cancelled" ? "cancelled" : failureSignal,
+                upstreamHttpStatus ?? undefined,
+                watchdog,
+              ),
+        upstreamHttpStatus,
         ...usage,
       });
     }, Effect.uninterruptible);
@@ -551,6 +569,7 @@ const make = Effect.gen(function* () {
 
     const recordStop = Effect.fn("InferenceGateway.recordStop")(function* (reason: WatchdogReason) {
       const target = yield* Ref.get(served);
+      failureSignal = "watchdog";
       yield* stops.record({
         threadId: caller.threadId,
         runId,
@@ -563,6 +582,9 @@ const make = Effect.gen(function* () {
 
     // Only failures before the request reaches a server move it to the next target.
     let upstream: HttpClientResponse.HttpClientResponse | undefined;
+    let retryBody = prepared.body;
+    let retried = false;
+    let bufferedReply: Uint8Array | undefined;
     for (const [index, target] of plan.success.entries()) {
       const next = plan.success[index + 1];
       if (next !== undefined && !target.ready) continue;
@@ -577,14 +599,13 @@ const make = Effect.gen(function* () {
       }
       const dispatchedAt = yield* Clock.currentTimeMillis;
       yield* Ref.set(milestones, { admittedAt: dispatchedAt, dispatchedAt });
-
       const execute = HttpClient.withScope(client).execute(
         HttpClientRequest.post(`${target.base}/${route}`).pipe(
           HttpClientRequest.setHeaders({
             ...upstreamHeaders(request, target.apiKey),
             ...proxyHeaders,
           }),
-          HttpClientRequest.bodyUint8Array(prepared.body, "application/json"),
+          HttpClientRequest.bodyUint8Array(retryBody, "application/json"),
         ),
       );
       // A server holding back its headers holds the slot too, so the first-content limit
@@ -597,10 +618,64 @@ const make = Effect.gen(function* () {
       if (answered._tag === "Success") {
         if (Option.isSome(answered.success)) {
           upstream = answered.success.value;
-          break;
+          upstreamHttpStatus = upstream.status;
+          if (prepared.streaming || retried) break;
+          const buffered = yield* upstream.arrayBuffer.pipe(Effect.result);
+          if (buffered._tag === "Failure") {
+            yield* finish("failed", "transport");
+            return errorResponse(
+              502,
+              "upstream_error",
+              "Could not read the inference server's reply.",
+            );
+          }
+          const raw = new Uint8Array(buffered.success);
+          meter.push(raw);
+          meter.finish();
+          if (raw.length > 1024 * 1024) {
+            bufferedReply = raw;
+            break;
+          }
+          const empty = upstream.status < 400 && meter.empty();
+          const nextBody = empty
+            ? retryBody
+            : upstream.status >= 400
+              ? recoverField(raw, retryBody)
+              : undefined;
+          if (nextBody === undefined) {
+            bufferedReply = raw;
+            break;
+          }
+          yield* Scope.close(attempt, Exit.void);
+          const completedAt = yield* Clock.currentTimeMillis;
+          yield* requestLog.record({
+            requestId,
+            serverId: target.serverId,
+            model: prepared.model,
+            threadId: caller.threadId ?? null,
+            runId,
+            parentRunId,
+            purpose,
+            status: "failed",
+            failureCause: empty ? "empty-completed" : "unsupported-field",
+            fallbackFrom: target.fallbackFrom,
+            staticPrefixHash,
+            receivedAt,
+            queueWaitMs: null,
+            ttftMs: null,
+            decodeMs: null,
+            durationMs: completedAt - receivedAt,
+            upstreamHttpStatus,
+            ...meter.finish(),
+          });
+          const nextTarget = { ...target, index: index + 1, ready: true };
+          plan.success.push(nextTarget);
+          retryBody = nextBody;
+          retried = true;
+          continue;
         }
         yield* recordStop("idle");
-        yield* finish("failed");
+        yield* finish("failed", "watchdog", "idle");
         return errorResponse(
           504,
           "t3_watchdog_idle",
@@ -608,19 +683,21 @@ const make = Effect.gen(function* () {
         );
       }
       if (next === undefined || !isPreDispatchFailure(answered.failure)) {
-        yield* finish("failed");
+        yield* finish("failed", "transport");
         return errorResponse(502, "upstream_error", "Could not reach the inference server.");
       }
       yield* Scope.close(attempt, Exit.void);
     }
     if (upstream === undefined) {
-      yield* finish("failed");
+      yield* finish("failed", "transport");
       return errorResponse(502, "upstream_error", "Could not reach the inference server.");
     }
+    upstreamHttpStatus = upstream.status;
     if (upstream.status >= 300 && upstream.status < 400) {
       yield* finish("failed");
       return errorResponse(502, "upstream_error", "The inference server answered with a redirect.");
     }
+    upstreamHttpStatus = upstream.status;
     const succeeded = upstream.status < 400;
     if (watching && succeeded) {
       yield* Ref.set(lastProgressAt, (yield* Ref.get(milestones)).dispatchedAt ?? receivedAt);
@@ -636,14 +713,18 @@ const make = Effect.gen(function* () {
         }
       }).pipe(Effect.forkIn(lifetime));
     }
-    const body = upstream.stream.pipe(
+    const upstreamStream =
+      bufferedReply === undefined ? upstream.stream : Stream.make(bufferedReply);
+    const body = upstreamStream.pipe(
       // Untraced per chunk: the request span already covers the stream.
       Stream.tap((chunk) => {
-        const first = meter.push(chunk);
         const moved = progressed;
         progressed = false;
-        const reason = pendingStop;
+
         return Effect.gen(function* () {
+          if (bufferedReply !== undefined) return;
+          const first = meter.push(chunk);
+          const reason = pendingStop;
           if (first || moved) {
             const now = yield* Clock.currentTimeMillis;
             if (first)
@@ -691,6 +772,9 @@ const make = Effect.gen(function* () {
                         ? "completed"
                         : "cancelled"
                       : "failed",
+                  Exit.hasInterrupts(exit) && !(meter.finished() && succeeded)
+                    ? "cancelled"
+                    : undefined,
                 ),
           ),
         ),

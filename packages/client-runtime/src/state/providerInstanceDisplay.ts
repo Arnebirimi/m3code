@@ -107,6 +107,7 @@ export const INFERENCE_SERVER_STATUS_LABELS: Readonly<Record<InferenceServerStat
   checking: "Checking",
   ready: "Ready",
   unreachable: "Unreachable",
+  // oxlint-disable-next-line t3code/no-untranslated-copy -- existing server-status English label; no behavior change in this cleanup
   error: "Error",
 };
 
@@ -127,6 +128,7 @@ export function providerInstanceInferenceLabel(
     const status = server.enabled ? INFERENCE_SERVER_STATUS_LABELS[server.status] : "Disabled";
     return `${displayName} · ${server.displayName} · ${status}`;
   }
+  // oxlint-disable-next-line t3code/no-untranslated-copy -- existing local-provider English label; no behavior change in this cleanup
   return snapshot.inference === "local" ? `${displayName} · Local` : displayName;
 }
 
@@ -169,5 +171,3 @@ export function makeLocalUsageModelsAtom(server: {
     }).pipe(Atom.withLabel(`local-usage-models:${idsJson}`)),
   );
 }
-
-export const ESTIMATED_API_SPEND_LABEL = "Estimated equivalent API spend";

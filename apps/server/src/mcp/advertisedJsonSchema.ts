@@ -80,7 +80,21 @@ const mergeTaggedObjects = (branches: ReadonlyArray<Json>): JsonObject | undefin
         ];
   });
   if (perTag.length > 0) (properties[tag] as JsonObject).description = perTag.join(" ");
-  return { type: "object", properties, required: [tag, ...requiredByAll] };
+  const conditionalRequired = objects.map((object, index) => {
+    const own = (index === 0 ? first : others[index - 1]!).filter(
+      (name) => name !== tag && !requiredByAll.includes(name),
+    );
+    return {
+      if: { properties: { [tag]: { const: tagOf(object, tag) } } },
+      required: [tag, ...own],
+    };
+  });
+  return {
+    type: "object",
+    properties,
+    required: [tag, ...requiredByAll],
+    allOf: conditionalRequired,
+  };
 };
 
 const compact = (schema: Json, optional: boolean): Json => {

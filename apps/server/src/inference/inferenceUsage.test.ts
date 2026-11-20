@@ -19,8 +19,10 @@ function meter(api: InferenceApi, streaming: boolean, text: string, size = 7) {
     }
   }
   const finished = usage.finished();
+  const { reasoningTokens, ...counts } = usage.finish();
   return {
-    usage: usage.finish(),
+    usage: counts,
+    reasoningTokens,
     responseId: usage.responseId(),
     firstContentAt,
     finished,
@@ -40,12 +42,14 @@ describe("makeUsageMeter", () => {
           prompt_tokens: 15,
           completion_tokens: 13,
           prompt_tokens_details: { cached_tokens: 4 },
+          completion_tokens_details: { reasoning_tokens: 5 },
         },
       },
       "[DONE]",
     ]);
     const result = meter("chat-completions", true, text);
     expect(result.usage).toEqual({ promptTokens: 15, cachedPromptTokens: 4, completionTokens: 13 });
+    expect(result.reasoningTokens).toBe(5);
     const roleOnly = encoder.encode(sse([{ choices: [{ delta: { role: "assistant" } }] }])).length;
     expect(result.firstContentAt).toBeGreaterThanOrEqual(Math.floor(roleOnly / 7));
     expect(result.firstContentAt).toBeLessThan(result.chunks);

@@ -782,15 +782,18 @@ const makeLifecycle = Effect.fnUntraced(function* (options: LifecycleOptions = {
     const disconnect = Fiber.interrupt(handler).pipe(
       Effect.andThen(Scope.close(requestScope, Exit.void)),
     );
+    /** Only supplies the upstream bytes: a safe retry has no downstream response to drain yet. */
+    const respond = (exchange: Exchange, response: Response) =>
+      Deferred.succeed(exchange.reply, response);
     /** Answers the request upstream and plays the client reading the whole response. */
     const serve = Effect.fnUntraced(function* (exchange: Exchange, response: Response) {
-      yield* Deferred.succeed(exchange.reply, response);
+      yield* respond(exchange, response);
       const sent = yield* Fiber.join(handler);
       yield* Stream.runDrain(bodyText(sent));
       yield* Scope.close(requestScope, Exit.void);
       return sent;
     });
-    return { handler, requestScope, disconnect, serve };
+    return { handler, requestScope, disconnect, serve, respond };
   });
 
   /** Exactly one terminal record and one admission release per server tried. */
@@ -815,7 +818,7 @@ it.effect("a client leaving while queued settles once and never dispatches", () 
     const { disconnect } = yield* start();
     yield* Queue.take(queued);
     yield* disconnect;
-    expect((yield* settledOnce()).status).toBe("cancelled");
+    expect(yield* settledOnce()).toMatchObject({ status: "cancelled", failureCause: "cancelled" });
     expect(yield* Queue.size(exchanges)).toBe(0);
   }),
 );
@@ -841,7 +844,7 @@ it.effect("stops a server that holds back its headers past the first-content lim
     yield* TestClock.adjust("5 minutes");
     expect((yield* Fiber.join(handler)).status).toBe(504);
     yield* Deferred.await(exchange.aborted);
-    expect((yield* settledOnce()).status).toBe("failed");
+    expect(yield* settledOnce()).toMatchObject({ status: "failed", failureCause: "watchdog-idle" });
   }),
 );
 

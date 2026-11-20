@@ -69,6 +69,22 @@ export const InferenceApiProtocol = Schema.Literals([
 export type InferenceApiProtocol = typeof InferenceApiProtocol.Type;
 
 /** Who asked: a user's turn, a scheduled task, or T3's own background writing. */
+/** Bounded request diagnosis; upstream messages and private request/response data are never stored. */
+export const InferenceFailureCause = Schema.Literals([
+  "unknown",
+  "transport",
+  "cancelled",
+  "upstream-http",
+  "context-overflow",
+  "unsupported-field",
+  "tool-format",
+  "empty-completed",
+  "watchdog-loop",
+  "watchdog-reasoning-limit",
+  "watchdog-idle",
+]);
+export type InferenceFailureCause = typeof InferenceFailureCause.Type;
+
 export const InferenceRequestPurpose = Schema.Literals(["interactive", "scheduled", "background"]);
 export type InferenceRequestPurpose = typeof InferenceRequestPurpose.Type;
 
@@ -172,7 +188,13 @@ export const InferenceUsageRow = Schema.Struct({
   completionTokens: NonNegativeInt,
   /** The window's most recent failed or rejected request. */
   lastFailure: Schema.optional(
-    Schema.Struct({ status: Schema.Literals(["failed", "rejected"]), at: IsoDateTime }),
+    Schema.Struct({
+      status: Schema.Literals(["failed", "rejected"]),
+      at: IsoDateTime,
+      cause: Schema.optional(InferenceFailureCause),
+      httpStatus: Schema.optional(NonNegativeInt),
+      advice: Schema.optional(TrimmedNonEmptyString),
+    }),
   ),
   queueWaitMs: Distribution,
   ttftMs: Distribution,

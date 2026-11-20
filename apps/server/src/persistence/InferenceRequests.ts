@@ -1,6 +1,7 @@
 import {
   InferenceRequestPurpose,
   InferenceServerId,
+  InferenceFailureCause,
   type InferenceThreadLastRequest,
   type InferenceUsageRow,
   type InferenceUsageSummary,
@@ -8,6 +9,7 @@ import {
   RunId,
   ThreadId,
 } from "@t3tools/contracts";
+import { inferenceFailureAdvice } from "../inference/InferenceDiagnostics.ts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -49,6 +51,9 @@ export const InferenceRequestRecord = Schema.Struct({
   promptTokens: Schema.NullOr(Schema.Number),
   cachedPromptTokens: Schema.NullOr(Schema.Number),
   completionTokens: Schema.NullOr(Schema.Number),
+  failureCause: Schema.NullOr(InferenceFailureCause),
+  upstreamHttpStatus: Schema.NullOr(Schema.Number),
+  reasoningTokens: Schema.NullOr(Schema.Number),
 });
 export type InferenceRequestRecord = typeof InferenceRequestRecord.Type;
 
@@ -90,6 +95,9 @@ const Row = Schema.Struct({
   prompt_tokens: Schema.NullOr(Schema.Number),
   cached_prompt_tokens: Schema.NullOr(Schema.Number),
   completion_tokens: Schema.NullOr(Schema.Number),
+  failure_cause: Schema.NullOr(InferenceFailureCause),
+  upstream_http_status: Schema.NullOr(Schema.Number),
+  reasoning_tokens: Schema.NullOr(Schema.Number),
 });
 const decodeRows = Schema.decodeUnknownEffect(Schema.Array(Row));
 
@@ -112,6 +120,9 @@ const fromRow = (row: typeof Row.Type): InferenceRequestRecord => ({
   promptTokens: row.prompt_tokens,
   cachedPromptTokens: row.cached_prompt_tokens,
   completionTokens: row.completion_tokens,
+  failureCause: row.failure_cause,
+  upstreamHttpStatus: row.upstream_http_status,
+  reasoningTokens: row.reasoning_tokens,
 });
 
 // Below this the output arrived in a burst (often buffered tool calls), not at a decode rate.
@@ -175,6 +186,15 @@ function aggregate(
             lastFailure: {
               status: lastFailure.status === "rejected" ? "rejected" : "failed",
               at: isoAt(lastFailure.receivedAt),
+              ...(lastFailure.failureCause === null
+                ? {}
+                : {
+                    cause: lastFailure.failureCause,
+                    advice: inferenceFailureAdvice(lastFailure.failureCause),
+                  }),
+              ...(lastFailure.upstreamHttpStatus === null
+                ? {}
+                : { httpStatus: lastFailure.upstreamHttpStatus }),
             },
           }),
       queueWaitMs: distribution(group.map((record) => record.queueWaitMs)),
@@ -221,6 +241,9 @@ const make = Effect.gen(function* () {
         prompt_tokens: entry.promptTokens,
         cached_prompt_tokens: entry.cachedPromptTokens,
         completion_tokens: entry.completionTokens,
+        failure_cause: entry.failureCause,
+        upstream_http_status: entry.upstreamHttpStatus,
+        reasoning_tokens: entry.reasoningTokens,
       })}`;
       yield* prune(yield* Clock.currentTimeMillis);
     },
