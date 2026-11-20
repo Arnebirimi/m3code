@@ -102,7 +102,7 @@ it.effect("sets the requested thinking level before prompting", () =>
       pi.received
         .filter((record) => record["type"] !== "get_last_assistant_text")
         .map(({ type, level }) => (level === undefined ? type : `${type}:${level}`)),
-      ["set_model", "set_thinking_level:low", "prompt"],
+      ["get_available_models", "set_model", "set_thinking_level:low", "prompt"],
     );
   }),
 );
@@ -229,7 +229,7 @@ it.effect("selects the provider and id Pi reported when the provider contains a 
       [{ provider, id: "qwen3" }],
     );
     const textGeneration = yield* makePiTextGeneration(
-      { enabled: true, binaryPath: "pi", launchArgs: "", customModels: [] },
+      { enabled: true, binaryPath: "pi", launchArgs: "", toolProfile: "auto", customModels: [] },
       {},
     ).pipe(Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, pi.spawner));
 
@@ -335,8 +335,20 @@ it.effect.each([
         version,
       );
       const textGeneration = yield* makePiTextGeneration(
-        { enabled: true, binaryPath: "pi", launchArgs: "", customModels: [] },
+        { enabled: true, binaryPath: "pi", launchArgs: "", toolProfile: "auto", customModels: [] },
         {},
+        undefined,
+        (_driver, detected) =>
+          Effect.succeed(
+            detected === "0.84.2"
+              ? {
+                  status: "broken" as const,
+                  message: null,
+                  recommendedVersion: null,
+                  recommendedRange: ">=1.0.0",
+                }
+              : undefined,
+          ),
       ).pipe(Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, pi.spawner));
 
       const generation = textGeneration.generateCommitMessage({
@@ -352,7 +364,7 @@ it.effect.each([
       });
       if (version === "0.84.2") {
         const error = yield* generation.pipe(Effect.flip);
-        assert.include(error.detail, "Pi 0.84.3 or newer");
+        assert.include(error.detail, "Pi 0.84.2 does not work");
         assert.deepEqual(pi.received, []);
         return;
       }
@@ -386,7 +398,7 @@ it.effect("generates at Pi's default level when Pi rejects the saved thinking le
       'Thinking level "max" is not supported by demo/demo-model',
     );
     const textGeneration = yield* makePiTextGeneration(
-      { enabled: true, binaryPath: "pi", launchArgs: "", customModels: [] },
+      { enabled: true, binaryPath: "pi", launchArgs: "", toolProfile: "auto", customModels: [] },
       {},
     ).pipe(Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, pi.spawner));
 

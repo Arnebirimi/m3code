@@ -144,14 +144,25 @@ export const PiDriver: ProviderDriver<PiSettings, PiDriverEnv, Path.Path> = {
       ),
     );
     const gatewaySource = yield* makePiGatewaySource(instanceId, host.paths.providerStatusCacheDir);
-    const textGeneration = yield* makePiTextGeneration(effectiveConfig, processEnv, gatewaySource);
+    const textGeneration = yield* makePiTextGeneration(
+      effectiveConfig,
+      processEnv,
+      gatewaySource,
+      host.compatibility,
+    );
 
     const checkProvider = fileSystem
       .makeDirectory(probeCwd, { recursive: true })
       .pipe(
         Effect.ignore,
         Effect.andThen(
-          checkPiProviderStatus(effectiveConfig, processEnv, probeCwd, gatewaySource),
+          checkPiProviderStatus(
+            effectiveConfig,
+            processEnv,
+            probeCwd,
+            gatewaySource,
+            host.compatibility,
+          ),
         ),
         Effect.map(stampIdentity),
         Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
