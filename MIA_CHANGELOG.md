@@ -9,23 +9,24 @@ the official T3 Code mobile app keeps working against this fork's server.
 
 ### Added
 
+- Upstream T3 Code changes are merged into this fork.
 - Offline coding tests and sample projects to evaluate local models consistently.
 - Clearer diagnostics for timeouts, cancellations, repetitive loops, and invalid responses.
 - Reasoning-token tracking and actionable failure advice to the usage dashboard.
-- One safe retry for empty replies or a rejected optional setting.
+- Non-streaming replies (at most 1 MiB) receive at most one empty-reply retry and one retry that removes an explicitly rejected optional setting.
 - A dated local-model improvement plan with measurable prerequisites for model benchmarks.
 
 ### Fixed
 
-- Retries no longer repeat tool actions, cancelled requests, or network failures.
-- The watchdog now reliably stops repetitive responses, including when the final chunk contains the repetition.
-- Worktree tools request the base Git reference only when needed.
-- Lean prompts no longer include unnecessary browser and device instructions.
+- Tool actions, cancelled requests, and network failures are not retried.
+- The watchdog now reliably stops repetitive responses, including when repetition is detected in the final chunk.
+- Worktree tools require the base Git reference only for the worktree strategy, where it is needed.
+- Lean orchestration omits browser and device instructions only when their tools are unavailable; lean tool handling matches the lean MCP catalog.
 
 ### Improved
 
-- Context compaction preserves errors and unfinished work, and its instructions discourage copying secrets.
-- Model-quality benchmarks remain pending until a local inference server is reachable; no results are inferred.
+- Pi compaction preserves errors and unfinished work. Its instructions tell the model not to copy secrets; this is not a secret filter.
+- Model-quality benchmarks have not been run because no local inference server was reachable.
 
 ## 2026-11-07, night: remote machines
 

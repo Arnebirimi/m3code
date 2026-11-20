@@ -6,15 +6,16 @@ lists every change in order.
 
 ## Latest local-model improvements
 
+- **Upstream updates**: merged recent T3 Code changes.
 - **Offline coding evals**: sample projects and tests for evaluating local models consistently.
 - **Clearer failures**: diagnostics for timeouts, cancellations, repetitive loops, and invalid responses.
-- **Better usage details**: reasoning tokens and actionable failure advice in the usage dashboard.
-- **One safe retry**: empty replies or a rejected optional setting get one retry, without repeating tool actions, cancelled requests, or network failures.
-- **Reliable watchdog**: repetitive responses stop reliably, including when repetition fills the final chunk.
-- **Correct worktree tools**: the base Git reference is requested only when needed.
-- **Leaner prompts**: unnecessary browser and device instructions are omitted.
-- **Safer compaction**: errors and unfinished work are preserved, and instructions discourage copying secrets.
-- **Honest benchmarks**: model-quality comparisons wait until a local inference server is reachable.
+- **Better usage details**: reasoning-token tracking and actionable failure advice in the usage dashboard.
+- **One safe retry for non-streaming replies**: at most one empty-reply retry and one retry that removes an explicitly rejected optional setting, for replies up to 1 MiB. Tool actions, cancelled requests, and network failures are not retried.
+- **Reliable watchdog**: repetitive responses stop reliably, including when repetition is detected in the final chunk.
+- **Correct worktree tools**: the base Git reference is required only for the worktree strategy, where it is needed.
+- **Leaner prompts**: lean mode omits browser instructions and unnecessary device instructions.
+- **Better Pi compaction**: preserves errors and unfinished work, and instructs the model not to copy secrets; this is not a secret filter.
+- **Benchmarks not run**: no local inference server was reachable, so model-quality comparisons remain pending.
 
 ## What's different
 
