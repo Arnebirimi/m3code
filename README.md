@@ -1,4 +1,4 @@
-# M3 Code (local-first fork)
+# M3 Code
 
 <p align="center">
   <img src="m3-code.png" alt="M3 Code" width="100%">
