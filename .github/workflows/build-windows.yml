@@ -1,0 +1,54 @@
+# Unsigned Windows installer (NSIS, x64) for this fork, on GitHub's free hosted runner (public repo).
+# Manual only. The upstream release.yml is locked to pingdotgg/t3code and paid Blacksmith runners.
+name: Build Windows installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+ (Node and pnpm from package.json)
+        uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1.15.0
+        with:
+          node-version-file: package.json
+          cache: false
+          run-install: false
+
+      - name: Install
+        run: vp install
+
+      - name: Rust toolchain
+        shell: pwsh
+        run: rustup default stable; cargo --version
+
+      - name: Build installer
+        shell: pwsh
+        env:
+          T3CODE_DESKTOP_OUTPUT_DIR: ${{ github.workspace }}\release-out
+          T3CODE_DESKTOP_VERBOSE: "true"
+        run: node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64
+
+      - name: Checksums
+        shell: pwsh
+        run: Get-ChildItem release-out -File | Get-FileHash -Algorithm SHA256 | Format-Table -AutoSize | Out-String -Width 300
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: m3code-windows-x64
+          path: release-out/*
+          retention-days: 14
