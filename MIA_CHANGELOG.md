@@ -22,8 +22,8 @@ art was regenerated from it: Linux/macOS/iOS 1024px app icons, web favicon 16/32
 180, PWA 192/512, the slimmed `favicon.ico` (16/32/48), the full Windows .ico, and the Android
 splash and monochrome (themed) icons, whose T3 glyphs became the same M3 monogram at the old
 dimensions. Both art files keep their resolution and gain transparency-masked rounded corners;
-palette compression shrinks the square art to ~160KB. The sidebar and other in-app marks keep
-using the M3 wordmark SVG.
+palette compression shrinks the square art to ~160KB and the wide banner to ~72KB. The sidebar
+and other in-app marks keep using the M3 wordmark SVG.
 
 ## Removed: all telemetry
 

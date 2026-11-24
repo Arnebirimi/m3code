@@ -60,7 +60,7 @@ native capture-helper errors, widget strings, docs.
 banner) and `m3-code-box.png` (square, app icon — flat black tile, white M3 monogram), both
 palette-compressed with rounded corners masked transparent (sharp `palette: true, quality: 90`;
 roundrect radius 86 box / 47 wide, cut slightly inside the art's own arc to avoid a white corner
-halo). From the square art, `assets/prod/*` and the mobile Android assets were regenerated (1024px
+halo; the wide banner uses quality 80 — glow gradients band below that). From the square art, `assets/prod/*` and the mobile Android assets were regenerated (1024px
 desktop/iOS icons, favicon 16/32/ico, apple-touch 180, PWA 192/512, Windows .ico, Android splash
 prod/nightly + monochrome mark — those two now carry the same white M3 monogram via
 `apps/mobile/assets/android-icon-mark.png`'s old geometry: glyph 553px in the 1152 splash, 279px in
