@@ -35,6 +35,14 @@ const config = Schema.decodeSync(ServerConfig)({
   providers: [],
   availableEditors: [],
   settings: {},
+  // Inert compatibility key upstream clients require; this fork exports nothing.
+  observability: {
+    logsDirectoryPath: "/workspace/logs",
+    localTracingEnabled: false,
+    otlpTracesEnabled: false,
+    otlpMetricsEnabled: false,
+    otlpLogsEnabled: false,
+  },
 });
 const environments: EnvironmentPresentation[] = [
   {
