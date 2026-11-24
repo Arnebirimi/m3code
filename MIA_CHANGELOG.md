@@ -5,6 +5,13 @@ changes on top of upstream [T3 Code](https://github.com/pingdotgg/t3code). It is
 `b90e554e0` (2026-11-06). Newest first. Every change to the client–server protocol is additive, so
 the official T3 Code mobile app keeps working against this fork's server.
 
+## 2026-11-24: Updated M3 box icon
+
+Compressed the updated `m3-code-box.png` at full resolution (1254×1254, 1.04 MB → 20.6 KB,
+palette PNG) and regenerated all derived production icons across desktop, web, and mobile
+(1024px Linux/macOS/iOS app icons, web favicons, apple-touch 180, PWA 192/512, `favicon.ico`,
+Windows `.ico`, Android splash & monochrome mark, and the local desktop entry icon).
+
 ## 2026-11-24: Telemetry cleanup audit & typecheck fixes
 
 Follow-up audit after removing telemetry and rebranding to M3 Code:
@@ -24,27 +31,31 @@ Follow-up audit after removing telemetry and rebranding to M3 Code:
   tests and provided `FileSystem | Path` context to `readBundledRemoteRuntime` in
   `apps/desktop/src/main.ts`.
 
-## Renamed the app to M3 Code
+## 2026-11-24: M3 Code rebrand, wordmark, icons & README
 
-Every user-visible name — window titles, menus, About, installer and artifact names, CLI
-messages, docs — now says **M3 Code**. "T3 Connect" and "T3 Chat" keep their names: they are
-upstream-operated services, not parts of the app. Functional identifiers are unchanged on
-purpose, so nothing breaks: the `t3` CLI and npm package, `T3CODE_*` environment variables,
-the `~/.t3` data directory, `t3code://` deep links, `com.t3tools.*` app identifiers, and the
-official T3 Code mobile app's pairing all keep working.
+- **Renamed the app to M3 Code**: every user-visible name — window titles, splash, menus, About,
+  PWA manifest, installer and artifact names (`M3-Code-*`), CLI messages, capture-helper errors,
+  and docs — now says **M3 Code**. "T3 Connect" and "T3 Chat" keep their names (upstream-operated
+  services). Functional identifiers are unchanged on purpose so nothing breaks: the `t3` CLI and
+  npm package, `T3CODE_*` environment variables, `~/.t3` data directory, `t3code://` deep links,
+  `com.t3tools.*` app identifiers, Electron profile (`t3code-v2`), legacy Windows migration names,
+  and official T3 Code mobile app pairing.
+- **M3 wordmark (web & mobile)**: replaced `T3Wordmark` with `M3Wordmark` in the sidebar,
+  standalone pages, timeline icons, and mobile widgets; renamed sidebar aria-labels and mobile
+  widget app-name strings.
+- **Flat M3 monogram icons & banner**: replaced the ornate box art with a flat black tile and
+  white M3 monogram, redrew the wide banner (`m3-code.png`, compressed to 72 KB at 1672×941),
+  and regenerated all desktop, web, and mobile derived icon assets.
+- **README & handoff**: added the wide M3 Code banner and zero-telemetry notice to `README.md`,
+  updated the README title to `# M3 Code`, and added `handoff.md`.
 
-## 2026-11-24: M3 icon redesign
+## 2026-11-24: Local Linux build override
 
-The square brand art is now a flat black tile with a white **M3** monogram (no "Code" lettering,
-no glow ring), and the wide banner art was redrawn to match. Every image derived from the square
-art was regenerated from it: Linux/macOS/iOS 1024px app icons, web favicon 16/32, apple-touch
-180, PWA 192/512, the slimmed `favicon.ico` (16/32/48), the full Windows .ico, and the Android
-splash and monochrome (themed) icons, whose T3 glyphs became the same M3 monogram at the old
-dimensions. Both art files keep their resolution and gain transparency-masked rounded corners;
-palette compression shrinks the square art to ~160KB and the wide banner to ~72KB. The sidebar
-and other in-app marks keep using the M3 wordmark SVG.
+- Added `T3CODE_DESKTOP_GLIBC_CEILING` in `scripts/linux-glibc.ts` so local Linux desktop builds
+  on newer toolchains can override the Ubuntu 24.04 glibc 2.39 release ceiling while keeping
+  release builds pinned.
 
-## Removed: all telemetry
+## 2026-11-24: Removed all telemetry
 
 Every telemetry, analytics, tracing, and identity-collection pipeline is deleted from the code —
 not disabled, removed. Nothing reports back to the fork maintainers, and no environment flag can
@@ -66,6 +77,7 @@ turn anything back on.
   remote build cache itself keeps working.
 - The managed-policy `telemetry` switch and the privacy-policy, FAQ, and settings text that
   described opting out; user docs now list the network calls that remain instead.
+- Release channel env var renamed to `T3CODE_RELEASE_CHANNEL`.
 - Compatibility: the server config still carries an `observability` object, because clients
   built from upstream contracts require the key (the official mobile app fails to decode the
   config without it). The object is inert — every signal off, and the server sends nothing.
