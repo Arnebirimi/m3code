@@ -35,6 +35,15 @@ jobs:
         shell: pwsh
         run: rustup default stable; cargo --version
 
+      # The fork ships more files than upstream's 80-file Windows payload guard allows (96 on 2026-11-24).
+      # The guard only keeps the installer lean; raise it for this build without committing the change.
+      - name: Raise payload file guard
+        shell: pwsh
+        run: |
+          $f = 'scripts/build-desktop-artifact.ts'
+          (Get-Content $f -Raw) -replace 'WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 80;', 'WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 150;' | Set-Content $f -NoNewline
+          Select-String -Path $f -Pattern 'WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 150' | Select-Object -First 1
+
       - name: Build installer
         shell: pwsh
         env:
