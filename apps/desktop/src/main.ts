@@ -128,22 +128,21 @@ const layerDesktopSshEnvironment = Layer.unwrap(
   Effect.gen(function* () {
     const environment = yield* DesktopEnvironment.DesktopEnvironment;
     const env = yield* HostProcess.Environment;
+    const runtimeContext = yield* Effect.context<
+      FileSystem.FileSystem | Path.Path | SecureRandom.SecureRandom
+    >();
     return DesktopSshEnvironment.layer({
       // Resolve per connect, after installing the login shell environment.
       resolveCliRunner: Effect.suspend(() => {
         const runner = DesktopSshEnvironment.resolveDesktopSshCliRunner(environment, env);
         return runner.nodeScriptPath === undefined
-          ? readBundledRemoteRuntime(environment, runner)
+          ? readBundledRemoteRuntime(environment, runner).pipe(Effect.provide(runtimeContext))
           : Effect.succeed(runner);
       }),
       resolveLauncherId: yield* Effect.cached(
         DesktopSshEnvironment.readOrCreateLauncherId(
           environment.path.join(environment.stateDir, "ssh-launcher-id"),
-        ).pipe(
-          Effect.provide(
-            yield* Effect.context<FileSystem.FileSystem | SecureRandom.SecureRandom>(),
-          ),
-        ),
+        ).pipe(Effect.provide(runtimeContext)),
       ),
     });
   }),
