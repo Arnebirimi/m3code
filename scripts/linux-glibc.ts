@@ -5,7 +5,9 @@ import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
 
 // Both Linux release jobs build on Ubuntu 24.04; this is a build ceiling, not a distro support promise.
-const GLIBC_BUILD_CEILING = "2.39";
+// A local build on a newer toolchain rebuilds node-pty against its own glibc, so the ceiling can be
+// raised there with T3CODE_DESKTOP_GLIBC_CEILING; release builds never set it.
+const GLIBC_BUILD_CEILING = process.env.T3CODE_DESKTOP_GLIBC_CEILING?.trim() || "2.39";
 const readelf = NodeUtil.promisify(NodeChildProcess.execFile);
 
 function compareVersions(left: string, right: string): number {
