@@ -1216,6 +1216,16 @@ it.effect.each([
       );
       assert.isFalse(snapshot.config.settings.defaultAutoPull);
       assert.deepEqual(snapshot.config.keybindings, initialKeybindings);
+      // Upstream clients require this key; the fork's own contracts dropped it, so the payload
+      // is pinned here: always present, always inert.
+      const { logsDirectoryPath, ...observabilityFlags } = snapshot.config.observability;
+      assert.equal(typeof logsDirectoryPath, "string");
+      assert.deepEqual(observabilityFlags, {
+        localTracingEnabled: false,
+        otlpTracesEnabled: false,
+        otlpMetricsEnabled: false,
+        otlpLogsEnabled: false,
+      });
       const duringAck = yield* keybindings.upsertKeybindingRule({
         key: "mod+alt+y",
         command: "terminal.toggle",

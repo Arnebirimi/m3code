@@ -37,6 +37,9 @@ turn anything back on.
   remote build cache itself keeps working.
 - The managed-policy `telemetry` switch and the privacy-policy, FAQ, and settings text that
   described opting out; user docs now list the network calls that remain instead.
+- Compatibility: the server config still carries an `observability` object, because clients
+  built from upstream contracts require the key (the official mobile app fails to decode the
+  config without it). The object is inert — every signal off, and the server sends nothing.
 
 ## 2026-11-20: local-model reliability
 

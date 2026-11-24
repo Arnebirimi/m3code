@@ -1777,6 +1777,16 @@ export const layerWsRpc = (
           providers,
           inferenceServers: yield* inferenceServers.current,
           ...discovery,
+          // Compatibility field for clients whose contracts still require it (the official
+          // mobile app's ServerConfig schema does). Every signal is off: this fork exports
+          // nothing and traces nothing, so the object is inert.
+          observability: {
+            logsDirectoryPath: config.logsDir,
+            localTracingEnabled: false,
+            otlpTracesEnabled: false,
+            otlpMetricsEnabled: false,
+            otlpLogsEnabled: false,
+          },
           settings,
           ...(serverSettings.managedPolicy === undefined
             ? {}

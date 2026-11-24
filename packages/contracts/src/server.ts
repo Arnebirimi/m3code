@@ -602,6 +602,18 @@ export const ServerConfig = Schema.Struct({
   remoteOpenTargets: Schema.optionalKey(ForwardCompatibleArray(RemoteOpenTarget)),
   /** Hints only; verify each address answers as this environment. */
   directEndpoints: Schema.optionalKey(ForwardCompatibleArray(ServerDirectEndpoint)),
+  /**
+   * Compatibility field: clients built from upstream contracts require it (the official mobile
+   * app's schema does). This fork exports and traces nothing, so the server always sends it
+   * with every signal off.
+   */
+  observability: Schema.Struct({
+    logsDirectoryPath: TrimmedNonEmptyString,
+    localTracingEnabled: Schema.Boolean,
+    otlpTracesEnabled: Schema.Boolean,
+    otlpMetricsEnabled: Schema.Boolean,
+    otlpLogsEnabled: Schema.Boolean,
+  }),
   settings: ServerSettings,
   /** Present when an administrator's policy file manages this environment. */
   managedPolicy: Schema.optionalKey(ManagedPolicySummary),
