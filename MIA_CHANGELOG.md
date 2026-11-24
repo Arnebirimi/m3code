@@ -12,8 +12,18 @@ messages, docs — now says **M3 Code**. "T3 Connect" and "T3 Chat" keep their n
 upstream-operated services, not parts of the app. Functional identifiers are unchanged on
 purpose, so nothing breaks: the `t3` CLI and npm package, `T3CODE_*` environment variables,
 the `~/.t3` data directory, `t3code://` deep links, `com.t3tools.*` app identifiers, and the
-official T3 Code mobile app's pairing all keep working. App icons still carry the upstream T3
-logo artwork.
+official T3 Code mobile app's pairing all keep working.
+
+## 2026-11-24: M3 icon redesign
+
+The square brand art is now a flat black tile with a white **M3** monogram (no "Code" lettering,
+no glow ring), and the wide banner art was redrawn to match. Every image derived from the square
+art was regenerated from it: Linux/macOS/iOS 1024px app icons, web favicon 16/32, apple-touch
+180, PWA 192/512, the slimmed `favicon.ico` (16/32/48), the full Windows .ico, and the Android
+splash and monochrome (themed) icons, whose T3 glyphs became the same M3 monogram at the old
+dimensions. Both art files keep their resolution and gain transparency-masked rounded corners;
+palette compression shrinks the square art to ~160KB. The sidebar and other in-app marks keep
+using the M3 wordmark SVG.
 
 ## Removed: all telemetry
 

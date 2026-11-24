@@ -56,14 +56,19 @@ native capture-helper errors, widget strings, docs.
   find pre-rename installs. `installer.nsh` still says "T3 Code (Alpha)" on purpose.
 - "T3 Connect" and "T3 Chat" — upstream-operated services, not parts of the app.
 
-**Icons** (`8911a3ae68`): brand art lives in `m3-code.png` (wide, README banner) and
-`m3-code-box.png` (square, app icon), both palette-compressed with rounded corners masked
-transparent (sharp `palette: true, quality: 90`; ImageMagick `roundrectangle` mask — note
-ImageMagick 7 spells it `roundrectangle`, not `rounded_rectangle`). From the square art,
-`assets/prod/*` were regenerated (1024px desktop/iOS icons, favicon 16/32/ico, apple-touch 180,
-PWA 192/512, Windows .ico). The pipeline files keep their historical `t3-black-*`/`black-*`
-filenames on purpose — `scripts/lib/brand-assets.ts` references them. Regenerating web favicons
-for real use: `favicon.ico` was slimmed to 16/32/48 only.
+**Icons** (`8911a3ae68`, redesigned `37bf4835f3`): brand art lives in `m3-code.png` (wide, README
+banner) and `m3-code-box.png` (square, app icon — flat black tile, white M3 monogram), both
+palette-compressed with rounded corners masked transparent (sharp `palette: true, quality: 90`;
+roundrect radius 86 box / 47 wide, cut slightly inside the art's own arc to avoid a white corner
+halo). From the square art, `assets/prod/*` and the mobile Android assets were regenerated (1024px
+desktop/iOS icons, favicon 16/32/ico, apple-touch 180, PWA 192/512, Windows .ico, Android splash
+prod/nightly + monochrome mark — those two now carry the same white M3 monogram via
+`apps/mobile/assets/android-icon-mark.png`'s old geometry: glyph 553px in the 1152 splash, 279px in
+the 432 mark). Regeneration one-off script pattern: sharp for renders/masks/palette PNGs plus the
+repo's own `encodePngIco` from `scripts/lib/icon-export.ts` for the ICOs; run under the Node 26
+runtime with `--experimental-strip-types`. The pipeline files keep their historical
+`t3-black-*`/`black-*` filenames on purpose — `scripts/lib/brand-assets.ts` references them.
+Regenerating web favicons for real use: `favicon.ico` was slimmed to 16/32/48 only.
 
 ## 4. Building and installing locally (Linux x64)
 
@@ -137,8 +142,8 @@ Notes:
 - Zero-grep: no `posthog|axiom|opentelemetry|distinct_id|ingest.t3.codes|T3CODE_TELEMETRY|T3CODE_OTLP|hashTelemetryId`
   in fork code (only `.repos/` vendored refs and vendor binaries). "T3 Code" remains only in
   intentional keeps (§3), README upstream references, `.repos/`, and lockfiles.
-- The installed AppImage was rebuilt after every branding/logo/compat change; currently running
-  build = `8911a3ae68` + wordmark commits (rebuild after the sidebar wordmark fix).
+- The installed AppImage was rebuilt after every branding/logo/compat change; the currently running
+  build is the tip commit of this branch (its icon redesign), built from this tree.
 
 ## 7. Known behavior deltas vs upstream (expected, not bugs)
 
