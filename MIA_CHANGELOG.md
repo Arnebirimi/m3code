@@ -5,6 +5,29 @@ changes on top of upstream [T3 Code](https://github.com/pingdotgg/t3code). It is
 `b90e554e0` (2026-11-06). Newest first. Every change to the client–server protocol is additive, so
 the official T3 Code mobile app keeps working against this fork's server.
 
+## Removed: all telemetry
+
+Every telemetry, analytics, tracing, and identity-collection pipeline is deleted from the code —
+not disabled, removed. Nothing reports back to the fork maintainers, and no environment flag can
+turn anything back on.
+
+- Product analytics: the PostHog pipeline, `ingest.t3.codes`, the `T3CODE_TELEMETRY_ENABLED`
+  opt-in, and every analytics call site (turn, provider, MCP tool, delegated-task, auth-flow
+  events).
+- Identity collection: the `Identify` module that read `~/.codex/auth.json` and `~/.claude.json`,
+  install IDs, `distinct_id`, device identifiers, and client connection fingerprint parameters.
+- Error and crash reporting: mobile crash reports (`expo-observe` → Axiom), the mobile source-map
+  upload pipeline, and the crash-report setting.
+- OpenTelemetry: server, desktop, web, and mobile OTLP exporters, the relay client tracer, and the
+  diagnostics UI for trace spans, OTLP endpoints, and `T3CODE_OTEL_SDK_DISABLED` /
+  `T3CODE_OTLP_*` switches.
+- Relay tracing: relay connection spans, the relay's Axiom datasets and monitors, and mobile
+  telemetry ingest on the relay.
+- Task-cache telemetry: run summaries, the savings database, and the savings dashboard. The
+  remote build cache itself keeps working.
+- The managed-policy `telemetry` switch and the privacy-policy, FAQ, and settings text that
+  described opting out; user docs now list the network calls that remain instead.
+
 ## 2026-11-20: local-model reliability
 
 ### Added

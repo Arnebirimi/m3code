@@ -73,11 +73,10 @@ import { resolveCodexHomeLayout } from "../provider/Drivers/CodexHomeLayout.ts";
 import { makeClaudeEnvironment } from "../provider/Drivers/ClaudeHome.ts";
 import type { deriveProviderInstanceConfigMap } from "../provider/ProviderInstanceRegistryHydration.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import { increment, terminalSessionsTotal } from "../observability/Metrics.ts";
 import { expandHomeVariable } from "@t3tools/provider-core/server/pathExpansion";
 import * as ProcessRunner from "../processRunner.ts";
 import * as PortScanner from "../preview/PortScanner.ts";
-import * as NativeTelemetryClient from "../resourceTelemetry/NativeTelemetryClient.ts";
+import * as NativeMonitorClient from "../resourceMonitor/NativeMonitorClient.ts";
 import { terminalOutputStream } from "./OutputProtocol.ts";
 import * as PtyAdapter from "@t3tools/shared/PtyAdapter";
 
@@ -1747,7 +1746,7 @@ export const make = Effect.fn("TerminalManager.make")(function* (
   const { terminalLogsDir, providerStatusCacheDir, baseDir } = yield* ServerConfig.ServerConfig;
   const ptyAdapter = yield* PtyAdapter.PtyAdapter;
   const portDiscovery = yield* PortScanner.PortDiscovery;
-  const nativeTelemetry = yield* NativeTelemetryClient.NativeTelemetryClient;
+  const nativeMonitor = yield* NativeMonitorClient.NativeMonitorClient;
   const serverSettings = yield* ServerSettings.ServerSettingsService;
   const path = yield* Path.Path;
   const resolveProviderInstanceEnvironment = Effect.fn(
@@ -1764,7 +1763,7 @@ export const make = Effect.fn("TerminalManager.make")(function* (
   return yield* makeWithOptions({
     logsDir: terminalLogsDir,
     ptyAdapter,
-    processTable: nativeTelemetry.processTable.pipe(
+    processTable: nativeMonitor.processTable.pipe(
       Effect.mapError(
         (cause) => new TerminalSubprocessCheckError({ cause, command: "resource-monitor" }),
       ),
@@ -2855,9 +2854,7 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
     let startedShell: string | null = null;
 
     const startResult = yield* Effect.result(
-      increment(terminalSessionsTotal, { lifecycle: eventType }).pipe(
-        Effect.andThen(
-          Effect.gen(function* () {
+      Effect.gen(function* () {
             const shellCandidates = yield* resolveShellCandidates(
               shellResolver,
               platform,
@@ -2946,9 +2943,7 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
             // Publish startup before draining any events replayed during subscription.
             eventsActivated = true;
             if (session.processEventDrainRunning) runFork(drainProcessEvents(session, processPid));
-          }),
-        ),
-      ),
+      }),
     );
 
     if (startResult._tag === "Success") {

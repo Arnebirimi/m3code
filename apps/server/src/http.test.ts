@@ -15,7 +15,6 @@ import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 import * as Queue from "effect/Queue";
 import * as References from "effect/References";
-import * as Tracer from "effect/Tracer";
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServerResponse } from "effect/http";
 import { ASSET_ROUTE_PREFIX } from "./assets/AssetAccess.ts";
 import { ATTACHMENT_UPLOAD_ROUTE_PREFIX } from "./assets/AttachmentUpload.ts";
@@ -179,20 +178,10 @@ describe("browser API CORS", () => {
   });
 });
 
-describe("untraced requests", () => {
-  it.effect("keeps signed URLs out of HTTP server spans and request logs", () =>
+describe("signed URL requests", () => {
+  it.effect("keeps signed URLs out of request logs", () =>
     Effect.gen(function* () {
-      const serverSpans: Array<string> = [];
       const loggedUrls: Array<unknown> = [];
-      const layerTracer = Layer.succeed(
-        Tracer.Tracer,
-        Tracer.make({
-          span: (options) => {
-            if (options.kind === "server") serverSpans.push(options.name);
-            return new Tracer.NativeSpan(options);
-          },
-        }),
-      );
       const layerLogger = Logger.layer(
         [
           Logger.make(({ fiber }) => {
@@ -217,9 +206,7 @@ describe("untraced requests", () => {
       ).pipe(Layer.provide(ServerHttp.layerUnloggedSignedRequests));
       const services = yield* Layer.build(
         HttpRouter.serve(layerRoutes, { disableListenLog: true }).pipe(
-          ServerHttp.withUntracedRequests,
           Layer.provideMerge(NodeHttpServer.layerTest),
-          Layer.provide(layerTracer),
           Layer.provide(layerLogger),
         ),
       );
@@ -236,11 +223,9 @@ describe("untraced requests", () => {
       ]) {
         expect((yield* client.execute(request)).status).toBe(204);
       }
-      expect(serverSpans).toEqual([]);
       expect(loggedUrls).toEqual([]);
 
       expect((yield* client.execute(HttpClientRequest.get("/api/environment"))).status).toBe(204);
-      expect(serverSpans).toEqual(["GET"]);
       expect(loggedUrls).toEqual(["/api/environment"]);
 
       for (const path of [
@@ -249,46 +234,7 @@ describe("untraced requests", () => {
       ]) {
         expect((yield* client.execute(HttpClientRequest.get(path))).status).toBe(404);
       }
-      expect(serverSpans).toEqual(["GET", "GET", "GET"]);
       expect(loggedUrls).toHaveLength(3);
-    }).pipe(Effect.provide(NodeServices.layer)),
-  );
-
-  it.effect("starts a separate trace for each request, not the server's lifetime trace", () =>
-    Effect.gen(function* () {
-      const requestSpans: Array<Tracer.NativeSpan> = [];
-      const layerTracer = Layer.succeed(
-        Tracer.Tracer,
-        Tracer.make({
-          span: (options) => {
-            const span = new Tracer.NativeSpan(options);
-            if (options.kind === "server") requestSpans.push(span);
-            return span;
-          },
-        }),
-      );
-      const layerRoutes = Layer.effectDiscard(
-        Effect.gen(function* () {
-          const router = yield* HttpRouter.HttpRouter;
-          yield* router.add("GET", "/api/environment", HttpServerResponse.empty());
-        }),
-      );
-      const services = yield* Layer.build(
-        HttpRouter.serve(layerRoutes, { disableListenLog: true, disableLogger: true }).pipe(
-          ServerHttp.withRootRequestSpans,
-          Layer.provideMerge(NodeHttpServer.layerTest),
-        ),
-      ).pipe(Effect.withSpan("server.lifetime"), Effect.provide(layerTracer));
-      // Without a traceparent header, the server alone decides each request's parent.
-      const client = Context.get(services, HttpClient.HttpClient);
-
-      for (let i = 0; i < 2; i++) {
-        yield* client
-          .execute(HttpClientRequest.get("/api/environment"))
-          .pipe(Effect.provideService(HttpClient.TracerPropagationEnabled, false));
-      }
-      expect(requestSpans.map((span) => span.parent._tag)).toEqual(["None", "None"]);
-      expect(new Set(requestSpans.map((span) => span.traceId)).size).toBe(2);
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

@@ -175,11 +175,6 @@ import {
 } from "./review.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
 import { OrchestrationSearchThreadsError } from "./threadSearch.ts";
-import {
-  ProviderUploadFeedbackError,
-  ProviderUploadFeedbackInput,
-  ProviderUploadFeedbackResult,
-} from "./provider.ts";
 import { ProviderInstanceId, ProviderInstanceMutation } from "./providerInstance.ts";
 import {
   IssueCandidates,
@@ -354,11 +349,9 @@ import {
 import {
   ServerConfigStreamEvent,
   DesktopUpdateCommitInput,
-  OtlpEndpointCheckInput,
   ServerPrepareTriageError,
   ServerPrepareTriageInput,
   ServerPrepareTriageResult,
-  OtlpEndpointCheckResult,
   ServerConfig,
   ServerProviderUpdateError,
   ServerProviderUpdateInput,
@@ -373,7 +366,6 @@ import {
   ServerSelfUpdateInput,
   ServerSelfUpdateProgressEvent,
   ServerSelfUpdateResult,
-  ServerTraceDiagnosticsResult,
   ServerProcessDiagnosticsResult,
   ServerProcessResourceHistoryInput,
   ServerProcessResourceHistoryResult,
@@ -384,11 +376,11 @@ import {
 } from "./server.ts";
 import {
   HostResourcesSnapshot,
-  ResourceTelemetryHistory,
-  ResourceTelemetryHistoryInput,
-  ResourceTelemetryRetryResult,
-  ResourceTelemetrySnapshot,
-} from "./resourceTelemetry.ts";
+  ResourceMonitorHistory,
+  ResourceMonitorHistoryInput,
+  ResourceMonitorRetryResult,
+  ResourceMonitorSnapshot,
+} from "./resourceMonitor.ts";
 import {
   UsageLimitSourceError,
   ProviderConsumeResetCreditInput,
@@ -480,7 +472,6 @@ export const WS_METHODS = {
   mcpAppsReadResource: "mcpApps.readResource",
   mcpAppsUpdateModelContext: "mcpApps.updateModelContext",
 
-  providerUploadFeedback: "provider.uploadFeedback",
   providerAuthStart: "provider.auth.start",
   providerConsumeResetCredit: "provider.consumeResetCredit",
   providerAuthComplete: "provider.auth.complete",
@@ -582,13 +573,11 @@ export const WS_METHODS = {
   serverSetAcpRegistryProvider: "server.setAcpRegistryProvider",
   serverDisableAcpRegistryProvider: "server.disableAcpRegistryProvider",
   serverLogoutAcpRegistry: "server.logoutAcpRegistry",
-  serverGetTraceDiagnostics: "server.getTraceDiagnostics",
   serverGetProcessDiagnostics: "server.getProcessDiagnostics",
   serverGetHostResources: "server.getHostResources",
   serverGetProcessResourceHistory: "server.getProcessResourceHistory",
-  serverGetResourceTelemetryHistory: "server.getResourceTelemetryHistory",
-  serverRetryResourceTelemetry: "server.retryResourceTelemetry",
-  serverCheckOtlpEndpoint: "server.checkOtlpEndpoint",
+  serverGetResourceMonitorHistory: "server.getResourceMonitorHistory",
+  serverRetryResourceMonitor: "server.retryResourceMonitor",
   serverListTextGeneratorModels: "server.listTextGeneratorModels",
   serverPrepareTriage: "server.prepareTriage",
   serverSignalProcess: "server.signalProcess",
@@ -688,7 +677,7 @@ export const WS_METHODS = {
   subscribeServerConfig: "subscribeServerConfig",
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
-  subscribeResourceTelemetry: "subscribeResourceTelemetry",
+  subscribeResourceMonitor: "subscribeResourceMonitor",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -1061,12 +1050,6 @@ const WsServerLogoutAcpRegistryRpc = Rpc.make(WS_METHODS.serverLogoutAcpRegistry
   error: Schema.Union([AcpRegistryOperationError, EnvironmentAuthorizationError]),
 });
 
-const WsServerGetTraceDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetTraceDiagnostics, {
-  payload: Schema.Struct({}),
-  success: ServerTraceDiagnosticsResult,
-  error: EnvironmentAuthorizationError,
-});
-
 const WsServerGetProcessDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetProcessDiagnostics, {
   payload: Schema.Struct({}),
   success: ServerProcessDiagnosticsResult,
@@ -1085,24 +1068,18 @@ const WsServerGetProcessResourceHistoryRpc = Rpc.make(WS_METHODS.serverGetProces
   error: EnvironmentAuthorizationError,
 });
 
-const WsServerGetResourceTelemetryHistoryRpc = Rpc.make(
-  WS_METHODS.serverGetResourceTelemetryHistory,
+const WsServerGetResourceMonitorHistoryRpc = Rpc.make(
+  WS_METHODS.serverGetResourceMonitorHistory,
   {
-    payload: ResourceTelemetryHistoryInput,
-    success: ResourceTelemetryHistory,
+    payload: ResourceMonitorHistoryInput,
+    success: ResourceMonitorHistory,
     error: EnvironmentAuthorizationError,
   },
 );
 
-const WsServerRetryResourceTelemetryRpc = Rpc.make(WS_METHODS.serverRetryResourceTelemetry, {
+const WsServerRetryResourceMonitorRpc = Rpc.make(WS_METHODS.serverRetryResourceMonitor, {
   payload: Schema.Struct({}),
-  success: ResourceTelemetryRetryResult,
-  error: EnvironmentAuthorizationError,
-});
-
-const WsServerCheckOtlpEndpointRpc = Rpc.make(WS_METHODS.serverCheckOtlpEndpoint, {
-  payload: OtlpEndpointCheckInput,
-  success: OtlpEndpointCheckResult,
+  success: ResourceMonitorRetryResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -1710,12 +1687,6 @@ const WsMcpAppsReadResourceRpc = Rpc.make(WS_METHODS.mcpAppsReadResource, {
   error: Schema.Union([McpAppRequestError, EnvironmentAuthorizationError]),
 });
 
-const WsProviderUploadFeedbackRpc = Rpc.make(WS_METHODS.providerUploadFeedback, {
-  payload: ProviderUploadFeedbackInput,
-  success: ProviderUploadFeedbackResult,
-  error: Schema.Union([ProviderUploadFeedbackError, EnvironmentAuthorizationError]),
-});
-
 const WsSubscribeVcsBranchRpc = Rpc.make(WS_METHODS.subscribeVcsBranch, {
   payload: VcsStatusInput,
   success: VcsBranchStatus,
@@ -2296,9 +2267,9 @@ const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   stream: true,
 });
 
-const WsSubscribeResourceTelemetryRpc = Rpc.make(WS_METHODS.subscribeResourceTelemetry, {
+const WsSubscribeResourceMonitorRpc = Rpc.make(WS_METHODS.subscribeResourceMonitor, {
   payload: Schema.Struct({}),
-  success: ResourceTelemetrySnapshot,
+  success: ResourceMonitorSnapshot,
   error: EnvironmentAuthorizationError,
   stream: true,
 });
@@ -2378,13 +2349,11 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerSetAcpRegistryProviderRpc,
   WsServerDisableAcpRegistryProviderRpc,
   WsServerLogoutAcpRegistryRpc,
-  WsServerGetTraceDiagnosticsRpc,
   WsServerGetProcessDiagnosticsRpc,
   WsServerGetHostResourcesRpc,
   WsServerGetProcessResourceHistoryRpc,
-  WsServerGetResourceTelemetryHistoryRpc,
-  WsServerRetryResourceTelemetryRpc,
-  WsServerCheckOtlpEndpointRpc,
+  WsServerGetResourceMonitorHistoryRpc,
+  WsServerRetryResourceMonitorRpc,
   WsServerListTextGeneratorModelsRpc,
   WsServerPrepareTriageRpc,
   WsServerGetUsageSummaryRpc,
@@ -2473,7 +2442,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsMcpAppsToolInfoRpc,
   WsMcpAppsReadResourceRpc,
   WsMcpAppsUpdateModelContextRpc,
-  WsProviderUploadFeedbackRpc,
   WsSubscribeVcsStatusRpc,
   WsSubscribeVcsBranchRpc,
   WsVcsRefreshBranchRpc,
@@ -2526,7 +2494,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeServerConfigRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,
-  WsSubscribeResourceTelemetryRpc,
+  WsSubscribeResourceMonitorRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
   WsOrchestrationV2GetNativeChildWorkRpc,

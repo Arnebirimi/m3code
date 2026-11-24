@@ -1,5 +1,21 @@
 # T3 Code (local-first fork)
 
+> [!WARNING]
+> **ALL TELEMETRY HAS BEEN REMOVED.**
+>
+> **NOTHING is being sent from this fork — no analytics, no product usage data, no error or crash
+> reporting, no OpenTelemetry traces/metrics/logs, and no install, device, or account
+> identifiers.** Every telemetry, analytics, tracing and identity-collection pipeline (PostHog,
+> Axiom, OpenTelemetry/OTLP export, `ingest.t3.codes`, install IDs, `distinct_id`, client
+> fingerprint params) has been deleted from the code, not merely disabled — there is no flag that
+> turns any of it back on. The only server-side data collection is the mobile push-notification
+> feature you explicitly enable, which is a notification service, not analytics.
+>
+> The only network traffic is the traffic you create: your prompts and files to the model
+> providers you configure, T3 Connect tunnel traffic when you link environments, model-catalog /
+> model-price fetches, and app update checks. See [docs/user/network-calls.md](./docs/user/network-calls.md)
+> for the complete list.
+
 This is a fork of [T3 Code](https://github.com/pingdotgg/t3code). For everything T3 Code does,
 see the upstream README. This page covers only what this fork adds; [MIA_CHANGELOG.md](./MIA_CHANGELOG.md)
 lists every change in order.

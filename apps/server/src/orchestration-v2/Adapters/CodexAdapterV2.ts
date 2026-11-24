@@ -207,7 +207,7 @@ export function normalizeCodexThreadLoadModelSelection(selection: ModelSelection
   return { ...rest, ...(loadOptions?.length ? { options: loadOptions } : {}) };
 }
 
-// Reasoning-effort changes preserve the tokenizer and context window; other changes need fresh telemetry.
+// Reasoning-effort changes preserve the tokenizer and context window; other changes need a fresh usage sample.
 export function canReuseCodexContextUsage(previous: ModelSelection, next: ModelSelection): boolean {
   return modelSelectionsEqual(
     {
@@ -8938,30 +8938,6 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
                       }),
                 ),
               ),
-          ),
-          uploadFeedback: Effect.fn("CodexAdapterV2.uploadFeedback")(
-            function* (feedbackInput) {
-              const threadId = yield* getNativeThreadId(feedbackInput.providerThread);
-              const response = yield* ensureInitialized.pipe(
-                Effect.andThen(
-                  client.request("feedback/upload", {
-                    classification: "bug",
-                    includeLogs: true,
-                    ...(feedbackInput.reason ? { reason: feedbackInput.reason } : {}),
-                    threadId,
-                  }),
-                ),
-              );
-              return { feedbackId: response.threadId };
-            },
-            Effect.mapError(
-              (cause) =>
-                new ProviderAdapter.ProviderAdapterProtocolError({
-                  driver: CODEX_PROVIDER,
-                  detail: "Failed to upload Codex thread feedback.",
-                  payload: cause,
-                }),
-            ),
           ),
           mcpApps,
           readThreadSnapshot: Effect.fn("CodexAdapterV2.readThreadSnapshot")(

@@ -429,12 +429,6 @@ export function createThreadEnvironmentAtoms<R, E>(
           `history:${JSON.stringify([environmentId, input.threadId])}`,
       },
     }),
-    uploadFeedback: createEnvironmentRpcCommand(runtime, {
-      label: "environment-data:commands:thread:upload-feedback",
-      tag: WS_METHODS.providerUploadFeedback,
-      scheduler,
-      concurrency,
-    }),
   };
   const commands = {
     ...sent,

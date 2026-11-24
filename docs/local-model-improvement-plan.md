@@ -4,7 +4,7 @@
 
 Make T3 Code a more reliable, economical interface for local coding agents by improving **task success per context token and GPU-second**, rather than adding another inference backend.
 
-The fork already has local-server discovery, strict local-only routing, per-server queuing, prompt-cache telemetry, watchdogs, fallback, vision probes, and Pi/OpenCode/Codex integration. This plan extends those strengths with better measurements, protocol recovery, model-specific defaults, prompt economy, and compaction.
+The fork already has local-server discovery, strict local-only routing, per-server queuing, prompt-cache diagnostics, watchdogs, fallback, vision probes, and Pi/OpenCode/Codex integration. This plan extends those strengths with better measurements, protocol recovery, model-specific defaults, prompt economy, and compaction.
 
 This is a staged implementation plan, not one large change. Each phase should land independently and establish a baseline before the next changes behavior.
 
@@ -91,7 +91,7 @@ Run each baseline configuration at least three times where variance matters; rep
 
 Real-agent evals take GPU time. Keep the default gate small and deterministic, and reserve longer multi-model matrices for manual/local release testing.
 
-## Phase 2 — Sanitized failure telemetry and diagnosis
+## Phase 2 — Sanitized failure diagnosis
 
 ### Work
 

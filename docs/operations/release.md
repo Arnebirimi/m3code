@@ -111,21 +111,16 @@ and nightly releases read the relay URL and Clerk client configuration from the 
 `production` GitHub Actions environment before building desktop, CLI, or hosted web artifacts. That
 environment admits only `main` and `v*` tags, so preview releases, which may run from any branch,
 take the same public identifiers from `.env.example`; keep it in step with the `production` values.
-Every channel reads the relay client tracing config from Alchemy state with the repository-level
-`CLOUDFLARE_API_TOKEN`, so moving that token into `production` would break preview releases.
-
 Required repository variables shared by relay deployments:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `PLANETSCALE_ORGANIZATION`
-- `AXIOM_ORG_ID`
 
 Required repository secrets shared by relay deployments:
 
 - `CLOUDFLARE_API_TOKEN`
 - `PLANETSCALE_API_TOKEN_ID`
 - `PLANETSCALE_API_TOKEN`
-- `AXIOM_TOKEN`
 
 Required `production` environment variables:
 
@@ -163,8 +158,7 @@ After changing a variable or secret, run the **Deploy T3 Connect relay** workflo
 one changed. Check **force** only to redeploy resources with no detected change.
 
 The account-scoped repository credentials are consumed by Alchemy while provisioning relay stages; they
-are not bound into the relay Worker. The production deployment uses an Axiom personal access token,
-so `AXIOM_ORG_ID` must accompany `AXIOM_TOKEN`. The `prod` stage owns the retained PlanetScale
+are not bound into the relay Worker. The `prod` stage owns the retained PlanetScale
 database. Local personal stages provision isolated branches from it and are never deployed by CI.
 Production adopts the configured relay API and tunnel DNS zones as retained Cloudflare resources.
 Personal stages reference the production-owned zones.
@@ -192,9 +186,8 @@ because those builds register recovery and replace a deleted tunnel after wake.
 2. Release the server build and confirm current hosts register recovery. Older hosts stay marked
    legacy and are only candidates under the legacy switch below.
 3. Set `dry-run`, run a relay deploy, and read the sweep counters (`scanned`, `wouldDelete`,
-   `skippedLegacy`, `skippedOrphan`, `failed`, `truncated`) across several sweeps. Each sweep records
-   them, and the active `mode`, as `relay.managed_endpoint_reaper.*` attributes on its
-   `relay.managed_endpoint_reaper.sweep` span in Axiom.
+   `skippedLegacy`, `skippedOrphan`, `failed`, `truncated`) across several sweeps. Each sweep logs
+   them, and the active `mode`.
 4. Run the disposable-host canary below.
 5. Set `enabled` only after the canary recovers without a server restart.
 
@@ -202,7 +195,7 @@ The job runs every five minutes with a five-minute grace period for tunnels that
 connector, so a candidate is usually removed five to ten minutes after it goes down. Tunnels that
 never connected wait an hour. One sweep attempts at most 100 deletions, so a backlog takes longer.
 Changing `RELAY_TUNNEL_CLEANUP_MODE`, including turning cleanup off during an incident, needs a relay
-deploy without force. Confirm the new `mode` on the next sweep span.
+deploy without force. Confirm the new `mode` on the next sweep log.
 
 To roll back, set cleanup to `off` and run a relay deploy before downgrading any host. Keep the
 recovery endpoints deployed while current server builds are in use. The nullable columns can stay.
@@ -230,7 +223,7 @@ column in its first deploy with this change; the legacy switch stays `off` until
    tunnels in every relay stage. The reaper only sees its own stage's tunnels, so clean up the rest
    by hand.
 2. Set the legacy mode to `dry-run`, deploy, and read `wouldDeleteLegacy`, `legacyOver30Days`,
-   `totalDown`, and `totalInactive` on the sweep spans for a day. `wouldDeleteLegacy` counts only the
+   `totalDown`, and `totalInactive` in the sweep logs for a day. `wouldDeleteLegacy` counts only the
    tunnels a sweep inspected, at most 500 per status. `totalDown` and `totalInactive` are Cloudflare's
    counts of this stage's tunnels down for over five minutes and never connected for over an hour.
    They include ones the reaper skips, so they are an upper bound on the backlog. The share of `wouldDeleteLegacy` in each sweep's `scanned` estimates how
@@ -244,9 +237,6 @@ column in its first deploy with this change; the legacy switch stays `off` until
    `attempted` well under 100 with `truncated` set means the sweep stopped early: either the time
    budget ran out or Cloudflare rate-limited a deletion. The counters don't say which; the relay
    logs a warning with the Cloudflare error for each failed deletion.
-
-In Axiom, filter the relay traces dataset on `name == "relay.managed_endpoint_reaper.sweep"` and
-chart the `attributes.custom.relay.managed_endpoint_reaper.*` fields over time.
 
 Set the legacy mode back to `off` and deploy if any of these happen:
 

@@ -463,7 +463,7 @@ it.layer(layerClaudeTextGenerationTest)("ClaudeTextGeneration", (it) => {
       structuredOutputError,
     ],
     [
-      "the errors list without CLI telemetry",
+      "the errors list without CLI diagnostics",
       JSON.stringify({
         ...structuredOutputFailure,
         subtype: "error_during_execution",
