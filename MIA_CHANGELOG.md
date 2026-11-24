@@ -1,9 +1,28 @@
 # MIA changelog
 
-What this fork ([MiaAI-Lab/t3code](https://github.com/MiaAI-Lab/t3code), branch `local-first`)
+What this fork ([MiaAI-Lab/m3code](https://github.com/MiaAI-Lab/m3code), branch `main`)
 changes on top of upstream [T3 Code](https://github.com/pingdotgg/t3code). It is based on upstream
 `b90e554e0` (2026-11-06). Newest first. Every change to the client–server protocol is additive, so
 the official T3 Code mobile app keeps working against this fork's server.
+
+## 2026-11-24: Telemetry cleanup audit & typecheck fixes
+
+Follow-up audit after removing telemetry and rebranding to M3 Code:
+
+- Mobile: removed the leftover `expo-observe` import and `Observe.reportError` call from
+  `RenderErrorBoundary.tsx`.
+- Dependencies: removed `@alchemy.run/axiom` from `pnpm-workspace.yaml` and refreshed
+  `pnpm-lock.yaml` so `expo-observe`, `@alchemy.run/axiom`, and `@distilled.cloud/axiom` are
+  completely purged.
+- Web & scripts: removed dead `VITE_RELAY_OTLP_TRACES_*` defines from Vite config/types and dead
+  `T3CODE_TELEMETRY_ENABLED` / `T3_TASK_CACHE_TELEMETRY` env vars from dev-runner and smoke
+  scripts.
+- Server & docs: removed the unreachable `observability` check from managed-policy validation,
+  cleaned up stale analytics/OTLP comments, and removed the obsolete `/feedback` section from
+  `docs/user/providers-codex.md`.
+- Typecheck: fixed missing `observability` compat fixture in `packages/client-runtime` session
+  tests and provided `FileSystem | Path` context to `readBundledRemoteRuntime` in
+  `apps/desktop/src/main.ts`.
 
 ## Renamed the app to M3 Code
 
