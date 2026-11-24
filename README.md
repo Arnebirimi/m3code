@@ -1,4 +1,4 @@
-# T3 Code (local-first fork)
+# M3 Code (local-first fork)
 
 > [!WARNING]
 > **ALL TELEMETRY HAS BEEN REMOVED.**
@@ -16,9 +16,10 @@
 > model-price fetches, and app update checks. See [docs/user/network-calls.md](./docs/user/network-calls.md)
 > for the complete list.
 
-This is a fork of [T3 Code](https://github.com/pingdotgg/t3code). For everything T3 Code does,
-see the upstream README. This page covers only what this fork adds; [MIA_CHANGELOG.md](./MIA_CHANGELOG.md)
-lists every change in order.
+**M3 Code** is this fork's name for the app. It is a fork of
+[T3 Code](https://github.com/pingdotgg/t3code); "T3 Code" below refers to that upstream project.
+For everything upstream does, see the upstream README. This page covers only what this fork adds;
+[MIA_CHANGELOG.md](./MIA_CHANGELOG.md) lists every change in order.
 
 ## Latest local-model improvements
 
@@ -41,7 +42,7 @@ default and the core of the app.
 ### Local first
 
 - **Use a local model**: one step from first run, Settings, the model picker, or the command
-  palette. T3 Code finds the model servers on your machine (Ollama, LM Studio, llama.cpp, vLLM,
+  palette. M3 Code finds the model servers on your machine (Ollama, LM Studio, llama.cpp, vLLM,
   SGLang, TensorFold), links an agent to the one you pick, and makes its model the default for new
   threads. Running it again reuses what it set up.
 - **Repair instead of "Unreachable"**: when a server stops answering, **Find server** looks on its
@@ -80,7 +81,7 @@ default and the core of the app.
 
 ### The inference gateway
 
-Linked providers send their requests through T3 Code, which:
+Linked providers send their requests through M3 Code, which:
 
 - queues requests per server (**Max concurrent requests**) so parallel threads take turns instead
   of overloading the GPU. Chat goes ahead of background writing, and a waiting thread shows
@@ -89,7 +90,7 @@ Linked providers send their requests through T3 Code, which:
   conversation on the server that produced it.
 - records each request's prompt, cached, and output tokens, queue wait, time to first token and
   decode speed, never the prompt or response text.
-- cancels the upstream request when a thread stops or T3 Code restarts.
+- cancels the upstream request when a thread stops or M3 Code restarts.
 - stops a runaway reply so it no longer holds the GPU: one that keeps repeating the same text,
   reasons for about 128 KB without answering, or sends nothing for 5 minutes before its first
   token (2 minutes after). The thread says why, with **Continue** and **Choose model**. Turn it
@@ -97,7 +98,7 @@ Linked providers send their requests through T3 Code, which:
 
 ### Images for local models
 
-- **Check images**: on **Settings → Inference**, T3 Code asks a model to name the colour of four
+- **Check images**: on **Settings → Inference**, M3 Code asks a model to name the colour of four
   test images and marks it **Reads images** or **Text only**. Ollama, LM Studio and llama.cpp
   report vision themselves, so their models are marked without a check.
 - **Images reach the model**: Pi and OpenCode send your image attachments to a linked model unless
@@ -141,7 +142,7 @@ Linked providers send their requests through T3 Code, which:
 
 ### NoName as a provider
 
-- **NoName runs in T3 Code like Pi**: add **NoName** in Settings → Providers and pick it in the
+- **NoName runs in M3 Code like Pi**: add **NoName** in Settings → Providers and pick it in the
   model picker. A thread drives the NoName server on the same machine (port 8890 by default, or
   any **Server URL**), in agent mode in the thread's folder. It works on SSH machines too.
 - **Its models, its tools**: the picker lists every model of NoName's own providers. NoName's
@@ -192,7 +193,7 @@ See [Local models](./docs/user/local-models.md) for setting up servers and provi
 
 ## Credits and license
 
-T3 Code is built by [T3 Tools](https://github.com/pingdotgg/t3code) and its contributors. This
+Upstream T3 Code is built by [T3 Tools](https://github.com/pingdotgg/t3code) and its contributors. This
 fork builds on their work and keeps their copyright notice. It is an independent fork, not
 affiliated with or endorsed by T3 Tools.
 

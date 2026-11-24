@@ -5,6 +5,16 @@ changes on top of upstream [T3 Code](https://github.com/pingdotgg/t3code). It is
 `b90e554e0` (2026-11-06). Newest first. Every change to the client–server protocol is additive, so
 the official T3 Code mobile app keeps working against this fork's server.
 
+## Renamed the app to M3 Code
+
+Every user-visible name — window titles, menus, About, installer and artifact names, CLI
+messages, docs — now says **M3 Code**. "T3 Connect" and "T3 Chat" keep their names: they are
+upstream-operated services, not parts of the app. Functional identifiers are unchanged on
+purpose, so nothing breaks: the `t3` CLI and npm package, `T3CODE_*` environment variables,
+the `~/.t3` data directory, `t3code://` deep links, `com.t3tools.*` app identifiers, and the
+official T3 Code mobile app's pairing all keep working. App icons still carry the upstream T3
+logo artwork.
+
 ## Removed: all telemetry
 
 Every telemetry, analytics, tracing, and identity-collection pipeline is deleted from the code —
