@@ -1,5 +1,9 @@
 # M3 Code (local-first fork)
 
+<p align="center">
+  <img src="m3-code.png" alt="M3 Code" width="100%">
+</p>
+
 > [!WARNING]
 > **ALL TELEMETRY HAS BEEN REMOVED.**
 >
